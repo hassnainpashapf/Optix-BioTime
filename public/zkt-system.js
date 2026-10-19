@@ -26,12 +26,12 @@ const bool=(k,l,extra={})=>({k,l,t:'checkbox',...extra});
 // ---------- User > UserGroup (= roles) ----------
 const MODN={employees:'Employees',organization:'Organization',shifts:'Shifts',attendance:'Attendance',leave:'Leave',overtime:'Overtime',payroll:'Payroll',devices:'Devices',access:'Access control',settings:'Settings'};
 let MODS=[];
-ZK.grid('zk:usergroup','UserGroup',{module:AD,load:async()=>{const [r,m]=await Promise.all([api('roles'),api('zk/modules')]);MODS=m;return r.map((x,i)=>({...x,id:i+1}))},
+ZK.grid('zk:usergroup','UserGroup',{module:AD,defaults:Object.fromEntries(Object.keys({employees:1,organization:1,shifts:1,attendance:1,leave:1,overtime:1,payroll:1,devices:1,access:1,settings:1}).map(m=>['p_'+m,['payroll','settings'].includes(m)?'none':'view'])),note:'A new UserGroup starts with View on everything except Payroll and Settings. Set Edit where the person must change data. A user whose group has No access to a part cannot open it.',load:async()=>{const [r,m]=await Promise.all([api('roles'),api('zk/modules')]);MODS=m;return r.map((x,i)=>({...x,id:i+1}))},
   cols:[['Name','name',{link:true}],['Users','users']],note:'A UserGroup decides what its users may see and change in each part of the system.',
   fields:[{k:'name',l:'Name',t:'text',req:true},...Object.keys(MODN).map(m=>({k:'p_'+m,l:'Permissions: '+MODN[m],t:'select',blank:false,opts:[['none','No access'],['view','View'],['edit','Edit']]}))],
   save:async(b,row)=>{const perms={};for(const m of MODS)perms[m]=b['p_'+m]||'none';await api(row?'roles/'+row.name:'roles',row?'PUT':'POST',row?{perms}:{name:b.name,perms})},
   remove:async id=>{const r=ZK.G['zk:usergroup'].all.find(x=>x.id===id);await api('roles/'+r.name,'DELETE')}});
-{const orig=ZK.edit;ZK.edit=async(key,id)=>{if(key!=='zk:usergroup')return orig(key,id);const s=ZK.G[key],row=id?s.all.find(r=>r.id===id):{perms:{}};if(id&&row.builtin)return alert('The admin group has every permission and cannot be changed');
+{const orig=ZK.edit;ZK.edit=async(key,id)=>{if(key!=='zk:usergroup')return orig(key,id);const s=ZK.G[key],row=id?s.all.find(r=>r.id===id):{perms:Object.fromEntries(Object.keys(MODN).map(m=>[m,['payroll','settings'].includes(m)?'none':'view']))};if(id&&row.builtin)return alert('The admin group has every permission and cannot be changed');
   const v={name:row.name};for(const m of MODS)v['p_'+m]=(row.perms||{})[m]||'none';const fields=id?s.o.fields.map(f=>f.k==='name'?{...f,t:'text',ph:'',hint:'(cannot be renamed)'}:f):s.o.fields;
   ZK.form((id?'Edit ':'Add ')+'UserGroup',fields,v,async b=>{if(id)b.name=row.name;return s.o.save(b,id?row:null)})}}
 
