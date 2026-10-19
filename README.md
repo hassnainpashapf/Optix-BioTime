@@ -158,3 +158,6 @@ The browser only allows this on **https** (or http://localhost), so deploy behin
 - **Ports and HTTPS afterwards:** System > Configuration > **Server Setting**: HTTP on/off + port, HTTPS on/off + port, automatic self-signed certificate or your own (PEM), redirect http to https (device paths `/iclock` stay on http), **Restart Now**. Saved in `server.json` next to the database. Environment variables `PORT`, `TLS_CERT`, `TLS_KEY` still override.
 - Devices push attendance over plain http: keep HTTP on unless your devices support https.
 - `launcher.js` restarts the server whenever it exits (restore, Restart Now). Running it directly: `node launcher.js` (data folder from `OPTIX_DATA`).
+
+### Deployed
+Proxmox CT 104 `optix` (Debian 12, 768 MB, starts on boot): http://192.168.30.94:8080 and https://192.168.30.94:8443 (self-signed certificate). Installed from `dist/optix-1.0.0-linux-x64.tar.gz` with `install.sh`. Startup takes about 20 seconds on first boot. Change the admin password after the first login.

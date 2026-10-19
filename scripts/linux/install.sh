@@ -8,6 +8,10 @@ while [ $# -gt 0 ]; do case "$1" in --http) HTTP="$2"; shift 2;; --https) HTTPS=
 DIR=/opt/optix; DATA=/var/lib/optix
 mkdir -p "$DIR" "$DATA"
 systemctl stop optix 2>/dev/null || true
+# minimal containers lack libatomic, which the Node binary needs
+if ! ./node -v >/dev/null 2>&1; then
+  (apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libatomic1) || dnf install -y libatomic || yum install -y libatomic || apk add libatomic || true
+fi
 rm -rf "$DIR/app"; cp -R app "$DIR/app"; cp -f node "$DIR/node"; chmod +x "$DIR/node"
 if [ ! -f "$DATA/server.json" ]; then
   if [ -n "$HTTPS" ]; then H='{"enabled":true,"port":'$HTTPS',"source":"auto","host":""}'; else H='{"enabled":false,"port":8443,"source":"auto","host":""}'; fi
