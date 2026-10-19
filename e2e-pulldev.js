@@ -20,6 +20,14 @@ try {
   await api('devices/check', 'POST', {}); row = (await api('devices')).find(x => x.id === d.id); assert.ok(row.online, 'reachable pull device shows Online');
   const dead = await api('devices', 'POST', { name: 'Away', ip: '127.0.0.1', port: closedPort }); await api('devices/check', 'POST', {}); assert.ok(!(await api('devices')).find(x => x.id === dead.id).online, 'unreachable pull device shows Offline');
   assert.equal((await S.raw('devices', 'POST', { name: 'Neither' })).status, 400, 'a device needs a serial number or an IP address');
+  // Area in the Add Device dialog = Personnel > Area
+  const area = (await api('branches', 'POST', { name: 'Karachi Office' })).id;
+  const a1 = await api('devices', 'POST', { name: 'Gate 1', sn: 'AREA-001', area_id: area }), a2 = await api('devices', 'POST', { name: 'Gate 2', sn: 'AREA-002', area_id: area });
+  const dl = await api('devices'), g1 = dl.find(x => x.id === a1.id), g2 = dl.find(x => x.id === a2.id);
+  assert.ok(g1.group_id && g1.group_id === g2.group_id, 'both devices of one area share its group'); assert.equal(g1.group_name, 'Karachi Office');
+  assert.equal((await api('device_groups')).find(g => g.id === g1.group_id).branch_id, area, 'the group is tied to the area');
+  await api('devices/' + a2.id, 'PUT', { area_id: null }); assert.equal((await api('devices')).find(x => x.id === a2.id).group_id, null, 'clearing the area clears the group');
+  assert.equal((await S.raw('devices', 'POST', { name: 'Bad', sn: 'AREA-003', area_id: 99999 })).status, 400, 'unknown area is refused');
 } finally { S.stop(); tcp.close(); }
 // the schedule: autoPull reads reachable pull devices (here the "device" is not a real ZKTeco, so the read fails and is logged)
 const dir = mkdtempSync(join(tmpdir(), 'optix-pull-')); process.env.DB_FILE = join(dir, 'p.db');

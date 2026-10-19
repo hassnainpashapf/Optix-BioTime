@@ -35,7 +35,7 @@ window.zkDev=async action=>{
   try{await send({});go(cur)}catch(e){alert(e.message)}};
 {
   ZK.reg('Devices','Device',async()=>{
-    const [d,g]=await Promise.all([api('devices'),api('device_groups')]);window.DEVS=d;window.DEVG=g;
+    const [d,g,br]=await Promise.all([api('devices'),api('device_groups'),api('branches')]);window.DEVS=d;window.DEVG=g;window.DEVB=br;
     const sel=window.devSel?d.find(x=>x.id===window.devSel):null;let panel='';
     if(sel){const tb=window.devTab||'overview',pf=window.devPf||{};let cm=[],es=[],ex=null;
       if(tb==='queue')[cm,es]=await Promise.all([api(`devices/${sel.id}/commands`),api(`devices/${sel.id}/events`)]);

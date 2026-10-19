@@ -86,7 +86,15 @@ function clean(b, partial) {
     if (k in b && b[k] !== null && b[k] !== '') { const v = Number(b[k]); if (!(Number.isInteger(v) && v >= lo && v <= hi)) return { error: `${label} must be a whole number from ${lo} to ${hi}` }; o[k] = v; }
   for (const k of ['approved', 'realtime', 'alert_off', 'att_device']) if (k in b) o[k] = b[k] ? 1 : 0;
   if ('alert_min' in b) { if (b.alert_min === null || b.alert_min === '') o.alert_min = null; else { const v = Number(b.alert_min); if (!(Number.isInteger(v) && v >= 1 && v <= 1440)) return { error: 'Offline alert must be a whole number of minutes from 1 to 1440' }; o.alert_min = v; } }
-  if ('group_id' in b) { if (b.group_id && !db.prepare('SELECT 1 FROM device_groups WHERE id=?').get(b.group_id)) return { error: 'Unknown device group' }; o.group_id = b.group_id || null; }
+  if ('area_id' in b) {   // the Area chosen in the Add Device dialog is a Personnel > Area; devices keep it as a device group tied to that area
+    if (b.area_id) {
+      const br = db.prepare('SELECT id, name FROM branches WHERE id=?').get(b.area_id); if (!br) return { error: 'Unknown area' };
+      let g = db.prepare('SELECT id FROM device_groups WHERE branch_id=?').get(br.id);
+      if (!g) { try { g = { id: Number(db.prepare('INSERT INTO device_groups(name, branch_id) VALUES(?,?)').run(br.name, br.id).lastInsertRowid) }; } catch { g = db.prepare('SELECT id FROM device_groups WHERE name=?').get(br.name); if (g) db.prepare('UPDATE device_groups SET branch_id=? WHERE id=? AND branch_id IS NULL').run(br.id, g.id); } }
+      o.group_id = g?.id ?? null;
+    } else o.group_id = null;
+  }
+  if ('group_id' in b && !('area_id' in b)) { if (b.group_id && !db.prepare('SELECT 1 FROM device_groups WHERE id=?').get(b.group_id)) return { error: 'Unknown device group' }; o.group_id = b.group_id || null; }
   return { o };
 }
 devicesRouter.get('/devices', (_q, res) => {
