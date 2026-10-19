@@ -281,6 +281,7 @@ export const DEFAULTS = {
   ot_monthly_max_min: 0,   // overtime cap per month in minutes (0 = no cap)
   temp_alert_c: 37.5,      // a body temperature reported by a device at or above this raises an alert (0 = off)
   visitor_max_hours: 8,    // a visitor still signed in after this many hours is shown as overstaying
+  pull_sync_min: 2,        // devices added by IP and port (pull) are read by the server every this many minutes (0 = only when you press Sync)
   device_offline_min: 5,   // a device that has not contacted the server for this many minutes is shown as offline
   store_templates: 0,      // 1 = keep fingerprint/face templates reported by devices (encrypted) so they can be copied to other devices
   portal_gps: 2,           // phone punch location: 0 = record only, 1 = accept anywhere but flag outside the site, 2 = must be inside an allowed site

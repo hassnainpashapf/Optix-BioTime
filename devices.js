@@ -51,7 +51,20 @@ export async function checkDevices(nowMs = Date.now()) {
   for (const c of stale) { db.prepare("UPDATE device_commands SET status='failed', result='No reply from the device' WHERE id=?").run(c.id); logEvent(c.device_id, 'command_failed', `${hideTmpl(c.cmd).split('\t')[0].slice(0, 60)}: no reply from the device`); }
   return out;
 }
-export function startMonitor() { checkDevices().catch(() => {}); setInterval(() => checkDevices().catch(() => {}), 60000).unref(); }
+// Devices added by IP and port (pull): the server connects to them and reads new punches by itself, as often as "pull_sync_min" says.
+const pulling = new Set();
+export async function autoPull(nowMs = Date.now()) {
+  const every = Number(getSettings().pull_sync_min) || 0, done = [];
+  if (!every) return done;
+  for (const d of db.prepare("SELECT * FROM devices WHERE approved=1 AND sn IS NULL AND ip IS NOT NULL AND ip<>''").all()) {
+    if (pulling.has(d.id) || d.online === 0) continue;                                   // already running, or the last check says it is off
+    if (d.last_sync && nowMs - ts(d.last_sync) < every * 60000 - 5000) continue;
+    pulling.add(d.id);
+    try { const r = await syncDevice(d); done.push({ id: d.id, ...r }); } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
+  }
+  return done;
+}
+export function startMonitor() { checkDevices().then(autoPull).catch(() => {}); setInterval(() => checkDevices().then(() => autoPull()).catch(() => {}), 60000).unref(); }
 
 // ---------- registry ----------
 const IP = /^(\d{1,3}\.){3}\d{1,3}$/, HOST = /^[a-z0-9]([a-z0-9.-]{0,98}[a-z0-9])?$/i;
@@ -112,6 +125,13 @@ devicesRouter.delete('/devices/:id', (req, res) => {
 
 devicesRouter.post('/devices/check', async (_q, res) => res.json(await checkDevices()));
 const load = (req, res) => { const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id); if (!d) fail(res, 'No such device', 404); return d; };
+devicesRouter.post('/devices/probe', async (req, res) => {   // "Test Connection" in the Add Device dialog, before anything is saved
+  const ip = String(req.body?.ip ?? '').trim(), port = Number(req.body?.port) || 4370;
+  if (!ip || !(IP.test(ip) ? ip.split('.').every(n => +n <= 255) : HOST.test(ip))) return fail(res, 'Enter the device IP address');
+  if (!(Number.isInteger(port) && port >= 1 && port <= 65535)) return fail(res, 'Port must be 1 to 65535');
+  const r = await probe(ip, port, 3000);
+  res.json({ ok: r.up, ms: r.ms ?? null, message: r.up ? `Reached ${ip}:${port} in ${r.ms} ms` : `No answer from ${ip}:${port}. Check the IP address and port (ZKTeco default 4370), the network cable/WiFi, and that this server and the device are on the same network.` });
+});
 devicesRouter.post('/devices/:id/test', async (req, res) => {
   const d = load(req, res); if (!d) return;
   if (isPush(d)) return res.json({ ok: !!d.last_seen && pushOnline(d, Date.now(), getSettings()), mode: 'push', last_seen: d.last_seen, message: d.last_seen ? `Last contact ${d.last_seen}` : 'This device has never connected yet' });
