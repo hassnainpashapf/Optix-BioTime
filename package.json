@@ -1,0 +1,21 @@
+{
+  "name": "biotime-clone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "seed": "node seed.js",
+    "test": "node test.js",
+    "cert": "sh scripts/make-cert.sh",
+    "e2e": "node e2e.js && node e2e-hr.js && node e2e-leave.js && node e2e-ot.js && node e2e-rbac.js && node e2e-reports.js && node e2e-admin.js && node e2e-shifts.js && node e2e-portal.js && node e2e-devices.js && node e2e-devpages.js && node e2e-policy.js && node e2e-alerts.js && node e2e-payroll.js && node e2e-hrx.js && node e2e-mobile.js && node e2e-codes.js && node e2e-workflow.js && node e2e-gateway.js && node e2e-org.js && node e2e-ac.js && node e2e-wfrole.js && node e2e-zk-reports.js && node e2e-zk-personnel.js && node e2e-zk-device.js && node e2e-zk-attsetup.js && node e2e-zk-access.js && node e2e-zk-system.js && node e2e-api.js && node e2e-extras.js && node e2e-mtd.js && node e2e-webauthn.js && node e2e-payextra.js && node e2e-attdevice.js && node e2e-fingerdev.js && node e2e-https.js",
+    "build:windows": "sh scripts/build-windows.sh",
+    "build:linux": "sh scripts/build-linux.sh"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "fflate": "^0.8.2",
+    "node-zklib": "^1.3.0",
+    "nodemailer": "^6.9.16"
+  }
+}
