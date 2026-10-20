@@ -67,7 +67,7 @@ function range(q, maxDays = 400) {
 const idList = (v) => { const a = String(v ?? '').split(',').map(Number).filter(n => Number.isFinite(n) && n > 0); return a.length ? a : null; };
 // The employees a request is about: tree selection (departments / areas / groups) and the Employee picker, always inside the login's scope.
 function pickEmps(q) {
-  let sql = `SELECT e.id, e.code, e.name, e.gender, e.department_id, e.branch_id, e.group_id, e.leave_policy_id, e.join_date, e.designation_id, e.shift_id,
+  let sql = `SELECT e.id, e.code, e.name, e.last_name, e.gender, e.department_id, e.branch_id, e.group_id, e.leave_policy_id, e.join_date, e.designation_id, e.shift_id,
              d.name AS dept, d.code AS dept_code, g.name AS grp, ds.name AS pos, ds.code AS pos_code, lp.name AS lgroup
              FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN emp_groups g ON g.id=e.group_id LEFT JOIN designations ds ON ds.id=e.designation_id LEFT JOIN leave_policies lp ON lp.id=e.leave_policy_id WHERE 1=1`;
   const args = [];
@@ -276,7 +276,7 @@ zkReportsRouter.get('/zkrep/tree/:kind', (req, res) => {
 });
 zkReportsRouter.get('/zkrep/employees', (req, res) => {
   const s = String(req.query.search ?? '').trim().toLowerCase(), q = pickEmps({ departments: req.query.departments, areas: req.query.areas, groups: req.query.groups });
-  res.json(q.filter(e => !s || e.code.toLowerCase().includes(s) || e.name.toLowerCase().includes(s)).slice(0, 300).map(e => ({ id: e.id, code: e.code, name: e.name, dept: e.dept ?? '' })));
+  res.json(q.filter(e => !s || e.code.toLowerCase().includes(s) || e.name.toLowerCase().includes(s)).slice(0, 2000).map(e => ({ id: e.id, code: e.code, name: e.name, last_name: e.last_name ?? '', dept: e.dept ?? '' })));
 });
 
 // ---------- Custom Report: saved column sets over the Total Time Card data ----------

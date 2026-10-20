@@ -124,7 +124,7 @@ portalRouter.post('/punch', (req, res) => {
   if (recent && (now - new Date(recent.ts.replace(' ', 'T'))) < S.portal_min_gap_min * 60000) return fail(res, `You already punched at ${hhmm(recent.ts)}. Wait ${S.portal_min_gap_min} minutes between punches.`, 429);
   db.exec('BEGIN');
   try {
-    if (!Number(db.prepare("INSERT OR IGNORE INTO logs(emp_code, ts, source) VALUES(?,?,'mobile')").run(e.code, ts).changes)) { db.exec('ROLLBACK'); return fail(res, 'That punch was already recorded. Wait a moment before trying again.', 429); }
+    if (!Number(db.prepare("INSERT OR IGNORE INTO logs(emp_code, ts, source, lat, lng) VALUES(?,?,'mobile',?,?)").run(e.code, ts, haveGps ? lat : null, haveGps ? lng : null).changes)) { db.exec('ROLLBACK'); return fail(res, 'That punch was already recorded. Wait a moment before trying again.', 429); }
     const logId = db.prepare('SELECT id FROM logs WHERE emp_code=? AND ts=?').get(e.code, ts)?.id ?? null;
     db.prepare('INSERT INTO mobile_punches(log_id, employee_id, ts, lat, lng, accuracy, site_id, distance_m, inside, flagged, note, device_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)')
       .run(logId, e.id, ts, haveGps ? lat : null, haveGps ? lng : null, Number.isFinite(acc) ? acc : null, site?.id ?? null, dist === null ? null : Math.round(dist), inside ? 1 : 0, flagged, note || null, dev || null);
@@ -178,8 +178,9 @@ portalRouter.post('/shifts/requests/:id/cancel', (req, res) => {
   const e = decideShiftRequest(q.id, 'cancel', 'Cancelled by employee', actor(req)); e ? fail(res, e) : res.json({ ok: true });
 });
 // Payslips appear only once HR has finalized the month; an employee only ever gets their own row.
-portalRouter.get('/payslips', (req, res) => res.json(db.prepare('SELECT month, status, paid_at, data FROM payroll_runs ORDER BY month DESC LIMIT 24').all()
-  .map(r => { const row = JSON.parse(r.data).find(x => x.code === req.me.code); return row ? { month: r.month, status: r.status, paid_at: r.paid_at, ...row } : null; }).filter(Boolean)));
+portalRouter.get('/payslips', (req, res) => { const sd = getSettings().slip_day, today = dateStr(new Date()); res.json(db.prepare('SELECT month, status, paid_at, data FROM payroll_runs ORDER BY month DESC LIMIT 24').all()
+  .filter(r => { if (!sd) return true; const [y, m] = r.month.split('-').map(Number), ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return today >= `${ny}-${String(nm).padStart(2, '0')}-${String(sd).padStart(2, '0')}`; })
+  .map(r => { const row = JSON.parse(r.data).find(x => x.code === req.me.code); return row ? { month: r.month, status: r.status, paid_at: r.paid_at, ...row } : null; }).filter(Boolean)); });
 
 // ---------- notifications and announcements ----------
 portalRouter.get('/notifications', (req, res) => { const o = { employeeId: req.me.id }, own = ownerOf.emp(req.me.id), items = feedFor(own, { ...o, limit: 60 }); res.json({ unread: unreadFor(own, o), items }); });

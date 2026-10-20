@@ -5,15 +5,17 @@ import { userCmd, queueCommand, logEvent, eligibleEmployees } from './devsync.js
 import { parseCsv, toCsv } from './csv.js';
 import { notify } from './notify.js';
 import { emit } from './events.js';
-import { syncDevice } from './zk.js';
+import { compareDevices, syncDevice, setDeviceClock, clearDeviceLogs, sendUsersToDevice, removeUsersFromDevice, startEnroll, readTemplatesNow, sendFingerprintsToDevice, enrolling } from './zk.js';
 import os from 'node:os';
+import { BRANDS, testDevice } from './brands.js';
+import { encrypt } from './bio.js';
 
 export const devicesRouter = express.Router();
 const fail = (res, msg, code = 400) => res.status(code).json({ error: msg });
 const isPush = (d) => !!d.sn; // push devices are identified by serial number; pull devices by IP address
 const stamp = () => new Date().toLocaleString('sv');
 const ts = (s) => Date.parse(String(s).replace(' ', 'T'));
-const hideTmpl = (cmd) => String(cmd).replace(/TMP=(\{\{bio:\d+\}\}|[A-Za-z0-9+/=]{20,})/g, 'TMP=[template]');
+const hideTmpl = (cmd) => String(cmd).replace(/TMP=(\{\{bio:\d+\}\}|[A-Za-z0-9+/=]{20,})/g, 'TMP=[template]').replace(/Passwd=[^\t\r\n]+/g, 'Passwd=[hidden]');
 
 // ---------- health ----------
 export const probe = (host, port, ms = 2000) => new Promise((ok) => {
@@ -57,7 +59,7 @@ export async function autoPull(nowMs = Date.now()) {
   const every = Number(getSettings().pull_sync_min) || 0, done = [];
   if (!every) return done;
   for (const d of db.prepare("SELECT * FROM devices WHERE approved=1 AND sn IS NULL AND ip IS NOT NULL AND ip<>''").all()) {
-    if (pulling.has(d.id) || d.online === 0) continue;                                   // already running, or the last check says it is off
+    if (pulling.has(d.id) || enrolling.has(d.id) || d.online === 0) continue;                                   // already running, or the last check says it is off
     if (d.last_sync && nowMs - ts(d.last_sync) < every * 60000 - 5000) continue;
     pulling.add(d.id);
     try { const r = await syncDevice(d); done.push({ id: d.id, ...r }); } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
@@ -84,6 +86,9 @@ function clean(b, partial) {
   if (!partial && !o.ip && !o.sn) return { error: 'Give the IP address (the server connects to the device) or the serial number (the device connects to the server)' };
   for (const [k, lo, hi, label] of [['port', 1, 65535, 'Port'], ['delay', 1, 3600, 'Check-in interval'], ['error_delay', 1, 3600, 'Retry interval after an error']])
     if (k in b && b[k] !== null && b[k] !== '') { const v = Number(b[k]); if (!(Number.isInteger(v) && v >= lo && v <= hi)) return { error: `${label} must be a whole number from ${lo} to ${hi}` }; o[k] = v; }
+  if ('brand' in b) { if (!(b.brand in BRANDS)) return { error: 'Unknown brand' }; o.brand = b.brand === 'zkteco' ? null : b.brand; }
+  text('dev_user', 60); if ('dev_pass' in b && b.dev_pass !== '') o.dev_pass = b.dev_pass === null ? null : encrypt(String(b.dev_pass).slice(0, 100));
+  if ('comm_key' in b) { const v = String(b.comm_key ?? '').trim(); if (v && !/^\d{1,9}$/.test(v)) return { error: 'Comm Key must be a number (up to 9 digits) as set on the device' }; o.comm_key = v || null; }
   for (const k of ['approved', 'realtime', 'alert_off', 'att_device']) if (k in b) o[k] = b[k] ? 1 : 0;
   if ('alert_min' in b) { if (b.alert_min === null || b.alert_min === '') o.alert_min = null; else { const v = Number(b.alert_min); if (!(Number.isInteger(v) && v >= 1 && v <= 1440)) return { error: 'Offline alert must be a whole number of minutes from 1 to 1440' }; o.alert_min = v; } }
   if ('area_id' in b) {   // the Area chosen in the Add Device dialog is a Personnel > Area; devices keep it as a device group tied to that area
@@ -101,7 +106,7 @@ devicesRouter.get('/devices', (_q, res) => {
   const S = getSettings(), nowMs = Date.now();
   res.json(db.prepare(`SELECT d.*, g.name AS group_name,
       (SELECT COUNT(*) FROM device_users du WHERE du.device_id=d.id) AS user_qty,
-      (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='fp') AS fp_qty, (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='face') AS face_qty,
+      CASE WHEN d.sn IS NULL AND d.dev_fp IS NOT NULL THEN d.dev_fp ELSE (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='fp') END AS fp_qty, CASE WHEN d.sn IS NULL AND d.dev_face IS NOT NULL THEN d.dev_face ELSE (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='face') END AS face_qty,
       (SELECT COUNT(*) FROM logs l WHERE l.device_id=d.id) AS punches,
       (SELECT COUNT(*) FROM logs l WHERE l.device_id=d.id AND l.ts>=date('now','localtime')) AS punches_today,
       (SELECT MAX(ts) FROM logs l WHERE l.device_id=d.id) AS last_punch,
@@ -109,7 +114,7 @@ devicesRouter.get('/devices', (_q, res) => {
       (SELECT COUNT(*) FROM device_commands c WHERE c.device_id=d.id AND c.status='failed') AS failed_commands,
       (SELECT COUNT(*) FROM device_events e WHERE e.device_id=d.id AND e.ts>=datetime('now','localtime','-1 day') AND e.kind IN ('offline','command_failed','sync_error','rejected_data','card_conflict')) AS problems_24h
     FROM devices d LEFT JOIN device_groups g ON g.id=d.group_id ORDER BY d.id`).all()
-    .map(d => ({ ...d, info: d.info ? JSON.parse(d.info) : {}, push: isPush(d), online: isPush(d) ? (d.last_seen ? pushOnline(d, nowMs, S) : null) : (d.online === null ? null : !!d.online) })));
+    .map(({ dev_pass, ...d }) => ({ ...d, has_pass: !!dev_pass, brand: d.brand || 'zkteco', info: d.info ? JSON.parse(d.info) : {}, push: isPush(d), online: isPush(d) ? (d.last_seen ? pushOnline(d, nowMs, S) : null) : (d.online === null ? null : !!d.online) })));
 });
 devicesRouter.post('/devices', (req, res) => {
   const { o, error } = clean(req.body ?? {}, false); if (error) return fail(res, error);
@@ -149,17 +154,41 @@ devicesRouter.post('/devices/:id/test', async (req, res) => {
 devicesRouter.post('/devices/:id/sync', async (req, res) => { // pull devices: read users and all punches now
   const d = load(req, res); if (!d) return;
   if (isPush(d)) return fail(res, 'This is a push device: it uploads by itself. Use "Request logs" to ask it to send punches again.');
-  try { const r = await syncDevice(d); res.json(r); } catch (e) { logEvent(d.id, 'sync_error', e.message); res.status(502).json({ error: 'Device sync failed: ' + e.message }); }
+  try { const r = await syncDevice(d, true); res.json(r); } catch (e) { logEvent(d.id, 'sync_error', e.message); res.status(502).json({ error: 'Device sync failed: ' + e.message }); }
+});
+
+// Fingerprint enrolment from the employee screen: the device opens its own enrolment screen for this person, who puts the finger on the device.
+devicesRouter.post('/devices/:id/enroll', async (req, res) => {
+  const d = load(req, res); if (!d) return; if (!d.approved) return fail(res, 'Approve the device first');
+  const e = db.prepare('SELECT * FROM employees WHERE code=?').get(String(req.body?.code ?? '')); if (!e) return fail(res, 'Choose an employee that exists');
+  const fid = Number(req.body?.fid ?? 0);
+  if (isPush(d)) { queueCommand(d.id, userCmd(e.code, e.name, e.card_no ?? '', e.device_priv ?? 0, e.pin ?? '')); queueCommand(d.id, `ENROLL_FP PIN=${e.code}\tFID=${fid}\tRETRY=3\tOVERWRITE=1`); return res.json({ ok: true, mode: 'push', message: `${e.name} can enroll on ${d.name}: the device opens its enrolment screen within a few seconds.` }); }
+  if (!d.ip) return fail(res, 'This device has no address to reach');
+  if (enrolling.has(d.id)) return fail(res, 'This device is busy with another enrolment');
+  try { await startEnroll(d, e, fid); res.json({ ok: true, mode: 'pull', message: `${d.name} is now showing its enrolment screen for ${e.name}. They have 2 minutes to put the finger on the device.` }); }
+  catch (err) { logEvent(d.id, 'sync_error', 'Enrolment: ' + err.message); res.status(502).json({ error: 'Could not start enrolment: ' + err.message }); }
+});
+// Keep the fingerprints a pull device holds (for copying to other devices).
+devicesRouter.post('/devices/:id/read-templates', async (req, res) => {
+  const d = load(req, res); if (!d) return; if (isPush(d)) return fail(res, 'A push device sends its fingerprints by itself (Device Menu > Upload User Data)');
+  try { res.json({ stored: await readTemplatesNow(d), kept: !!getSettings().store_templates }); } catch (err) { res.status(502).json({ error: 'Could not read the fingerprints: ' + err.message }); }
 });
 
 // ---------- commands for push devices (formats follow the ZKTeco push protocol; verify on your own device model) ----------
 const needPush = (d, res) => (isPush(d) && d.approved ? true : (fail(res, 'This works for approved push devices only'), false));
 devicesRouter.post('/devices/:id/reboot', (req, res) => { const d = load(req, res); if (!d || !needPush(d, res)) return; res.json({ command: queueCommand(d.id, 'REBOOT') }); });
-devicesRouter.post('/devices/:id/time-sync', (req, res) => {
+devicesRouter.post('/devices/:id/time-sync', async (req, res) => {
   const d = load(req, res); if (!d) return;
-  if (!isPush(d)) return fail(res, 'Setting the clock is not supported for pull-mode devices. Set it on the device, or switch the device to push mode.');
   if (!d.approved) return fail(res, 'Approve the device first');
+  if (!isPush(d)) { try { return res.json(await setDeviceClock(d)); } catch (e) { return res.status(502).json({ error: 'Could not set the clock: ' + e.message }); } }
   res.json({ command: queueCommand(d.id, `SET OPTION DateTime=${stamp()}`) });
+});
+// Pull devices: copy every punch to Optix, then empty the device (refused if anything could be lost).
+devicesRouter.post('/devices/:id/clear-logs', async (req, res) => {
+  const d = load(req, res); if (!d) return;
+  if (isPush(d)) return fail(res, 'For a push device use Device > Data Clean > Clear Attendance Data');
+  if (req.body?.confirm !== true) return fail(res, 'Confirm that the punches should be removed from the device');
+  try { res.json(await clearDeviceLogs(d)); } catch (e) { logEvent(d.id, 'sync_error', e.message); res.status(502).json({ error: e.message }); }
 });
 devicesRouter.post('/devices/:id/request-logs', (req, res) => {
   const d = load(req, res); if (!d || !needPush(d, res)) return;
@@ -176,9 +205,27 @@ devicesRouter.post('/devices/:id/push-users', (req, res) => {
   res.json({ queued: emps.length, only_branch: !!g?.branch_id, only_chosen: d.access_mode === 'selected' });
 });
 // Copy stored fingerprints/faces to this device (only possible when template storage is on).
-devicesRouter.post('/devices/:id/sync-bio', (req, res) => {
-  const d = load(req, res); if (!d || !needPush(d, res)) return;
+// Try the connection details before saving a device (any brand): what the device says it is.
+devicesRouter.post('/devices/test-connection', async (req, res) => {
+  const b = req.body ?? {}, d = { brand: b.brand, ip: String(b.ip ?? '').trim(), port: Number(b.port) || undefined, dev_user: b.dev_user ?? '', dev_pass: b.dev_pass ? encrypt(String(b.dev_pass)) : null };
+  if (!d.ip) return fail(res, 'Give the IP address first');
+  try { if (!d.brand || d.brand === 'zkteco') return fail(res, 'ZKTeco devices are tested when you save them'); res.json({ ok: true, ...(await testDevice(d)) }); }
+  catch (e) { res.status(502).json({ error: e.message }); }
+});
+devicesRouter.get('/devices/:id/compare/:other', async (req, res) => {
+  const a = load(req, res); if (!a) return; const b = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.other); if (!b) return fail(res, 'No such device', 404);
+  if (a.sn || b.sn) return fail(res, 'Comparison works between two pull devices (connected by IP address)');
+  try { res.json(await compareDevices(a, b)); } catch (err) { res.status(502).json({ error: 'Could not read the devices: ' + err.message }); }
+});
+devicesRouter.post('/devices/:id/sync-bio', async (req, res) => {
+  const d = load(req, res); if (!d) return;
   if (!getSettings().store_templates) return fail(res, 'Template storage is switched off in Settings, so there is nothing to copy.');
+  if (d.approved && !d.sn && d.ip) { // a pull device: the people and their stored fingerprints are written to it directly
+    const people = eligibleEmployees(d).map(e => ({ code: e.code, name: e.name, card: e.card_no }));
+    try { await sendUsersToDevice(d, people.filter(p => db.prepare("SELECT 1 FROM biodata b JOIN employees e ON e.id=b.employee_id WHERE e.code=? AND b.kind='fp' AND b.data IS NOT NULL").get(p.code))); const r = await sendFingerprintsToDevice(d, people); return res.json({ queued: 0, employees: r.people, fingerprints: r.fingerprints }); }
+    catch (err) { logEvent(d.id, 'sync_error', err.message); return res.status(502).json({ error: 'Could not copy to the device: ' + err.message }); }
+  }
+  if (!needPush(d, res)) return;
   const from = req.body?.from_device_id ?? null, okIds = new Set(eligibleEmployees(d).map(e => e.id));
   const rows = db.prepare(`SELECT b.id, b.kind, b.fid, b.size, e.id AS eid, e.code, e.name, e.card_no FROM biodata b JOIN employees e ON e.id=b.employee_id
     WHERE e.active=1 AND b.data IS NOT NULL AND IFNULL(b.device_id,0)!=? ${from ? 'AND b.device_id=?' : ''} LIMIT 5000`).all(d.id, ...(from ? [from] : [])).filter(r => okIds.has(r.eid));
@@ -240,16 +287,27 @@ devicesRouter.get('/devices/:id/users', (req, res) => {
   res.json({ push: isPush(d), approved: !!d.approved, users: rows.map(r => ({ ...r, name: r.emp_name || r.device_name || '', in_system: !!r.employee_id })) });
 });
 const codesOf = (req) => [...new Set((req.body?.codes ?? []).map(String).filter(c => /^[\w.-]{1,30}$/.test(c)))].slice(0, 2000);
-devicesRouter.post('/devices/:id/users/send', (req, res) => { // send chosen employees to the device (or every active one when "all")
-  const d = load(req, res); if (!d || !needPush(d, res)) return;
+const isPull = (d) => d && !d.sn && d.ip && d.approved; // reached directly over its IP and port
+devicesRouter.post('/devices/:id/users/send', async (req, res) => { // send chosen employees to the device (or every active one when "all")
+  const d = load(req, res); if (!d || !(isPull(d) || needPush(d, res))) return;
   const ok = new Map(eligibleEmployees(d).map(e => [e.code, e]));
   const codes = req.body?.all ? [...ok.keys()] : codesOf(req);
+  if (isPull(d)) {
+    const people = codes.map(c => ok.get(c)).filter(Boolean).map(e => ({ code: e.code, name: e.name, card: e.card_no }));
+    if (!people.length) return fail(res, 'Nobody to send: the people must be active and allowed on this device');
+    try { const r = await sendUsersToDevice(d, people); for (const p of people) db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name").run(d.id, p.code, p.name); return res.json({ queued: 0, sent: r.sent }); }
+    catch (e) { logEvent(d.id, 'sync_error', e.message); return res.status(502).json({ error: 'Could not send to the device: ' + e.message }); }
+  }
   let n = 0; for (const c of codes) { const e = ok.get(c); if (!e) continue; queueCommand(d.id, userCmd(e.code, e.name, e.card_no)); db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO NOTHING").run(d.id, e.code, e.name); n++; }
   res.json({ queued: n });
 });
-devicesRouter.post('/devices/:id/users/remove', (req, res) => { // delete chosen people from the device only; the employee record stays
-  const d = load(req, res); if (!d || !needPush(d, res)) return;
+devicesRouter.post('/devices/:id/users/remove', async (req, res) => { // delete chosen people from the device only; the employee record stays
+  const d = load(req, res); if (!d || !(isPull(d) || needPush(d, res))) return;
   const codes = codesOf(req); if (!codes.length) return fail(res, 'Select at least one person');
+  if (isPull(d)) {
+    try { const r = await removeUsersFromDevice(d, codes); for (const c of codes) db.prepare('DELETE FROM device_users WHERE device_id=? AND code=?').run(d.id, c); return res.json({ queued: 0, removed: r.removed }); }
+    catch (e) { logEvent(d.id, 'sync_error', e.message); return res.status(502).json({ error: 'Could not delete on the device: ' + e.message }); }
+  }
   for (const c of codes) { queueCommand(d.id, `DATA DELETE USERINFO PIN=${c}`); db.prepare('DELETE FROM device_users WHERE device_id=? AND code=?').run(d.id, c); }
   res.json({ queued: codes.length });
 });

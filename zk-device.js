@@ -5,6 +5,7 @@ import { notify } from './notify.js';
 import { makePairCode } from './mobile.js';
 import { dateStr, addDays } from './dates.js';
 import { scopeClause } from './rbac.js';
+import { setDeviceClock, clearDeviceLogs, syncDevice, sendUsersToDevice, sendFingerprintsToDevice, removeUsersFromDevice, startEnroll, enrolling } from './zk.js';
 
 // ZKT-style Device module: parameters, work codes, bio photos, logs, device commands, message targeting, mobile app and geo-fence pages.
 export const zkdRouter = express.Router();
@@ -32,7 +33,7 @@ CREATE TABLE IF NOT EXISTS zk_oplog(id INTEGER PRIMARY KEY, device_id INTEGER RE
 CREATE TABLE IF NOT EXISTS zk_errlog(id INTEGER PRIMARY KEY, device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE, code TEXT, message TEXT, command TEXT, command_id INTEGER, extra TEXT, upload_time TEXT);
 CREATE TABLE IF NOT EXISTS zk_uplog(id INTEGER PRIMARY KEY, device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE, event TEXT, content TEXT, count INTEGER DEFAULT 0, error_count INTEGER DEFAULT 0, upload_time TEXT);
 CREATE TABLE IF NOT EXISTS zk_msg_dev(message_id INTEGER NOT NULL REFERENCES device_messages(id) ON DELETE CASCADE, device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE, PRIMARY KEY(message_id, device_id));
-CREATE TABLE IF NOT EXISTS zk_applog(id INTEGER PRIMARY KEY, user TEXT, ts TEXT, path TEXT, method TEXT, ip TEXT, status INTEGER, ms INTEGER);
+CREATE TABLE IF NOT EXISTS zk_applog(id INTEGER PRIMARY KEY, user TEXT, ts TEXT, path TEXT, method TEXT, ip TEXT, status INTEGER, ms INTEGER, query TEXT, error TEXT);
 CREATE TABLE IF NOT EXISTS zk_gps_emp(id INTEGER PRIMARY KEY, employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE, site_id INTEGER NOT NULL REFERENCES geo_sites(id) ON DELETE CASCADE, distance REAL, start_date TEXT, end_date TEXT);
 CREATE TABLE IF NOT EXISTS zk_gps_dept(id INTEGER PRIMARY KEY, department_id INTEGER NOT NULL REFERENCES departments(id) ON DELETE CASCADE, site_id INTEGER NOT NULL REFERENCES geo_sites(id) ON DELETE CASCADE, distance REAL, start_date TEXT, end_date TEXT);`);
 
@@ -55,18 +56,21 @@ export function recordCommandResult(deviceId, cmdId, cmd, ret) {
 db.exec(`INSERT INTO zk_errlog(device_id, code, message, command, command_id, extra, upload_time)
   SELECT c.device_id, REPLACE(IFNULL(c.result,''),'Return=',''), 'The device returned error ' || REPLACE(IFNULL(c.result,''),'Return=',''), CASE WHEN c.cmd LIKE '%TMP=%' OR c.cmd LIKE '%Content=%' THEN SUBSTR(c.cmd,1,INSTR(c.cmd,char(9))-1) ELSE SUBSTR(REPLACE(c.cmd, char(9), '  '),1,300) END, c.id, '', IFNULL(c.sent, c.created)
   FROM device_commands c WHERE c.status='failed' AND NOT EXISTS (SELECT 1 FROM zk_errlog z WHERE z.command_id=c.id)`);
+addCol('zk_applog', 'query', 'TEXT'); addCol('zk_applog', 'error', 'TEXT'); // databases made before these columns existed
 // mobile app request log (mounted in front of /api/m)
 export function mobileLog(req, res, next) {
-  const t0 = Date.now();
-  res.on('finish', () => { try { db.prepare('INSERT INTO zk_applog(user, ts, path, method, ip, status, ms) VALUES(?,?,?,?,?,?,?)').run(req.user ?? req.me?.name ?? '', stamp(), String(req.originalUrl).split('?')[0].slice(0, 200), req.method, String(req.ip ?? '').replace('::ffff:', ''), res.statusCode, Date.now() - t0); db.prepare('DELETE FROM zk_applog WHERE id<(SELECT MAX(id)-5000 FROM zk_applog)').run(); } catch {} });
+  const t0 = Date.now(); let err = null; const j = res.json.bind(res); res.json = (b) => { if (b && typeof b === 'object' && typeof b.error === 'string') err = b.error; return j(b); };
+  res.on('finish', () => { try { const q = String(req.originalUrl).split('?')[1] ?? ''; db.prepare('INSERT INTO zk_applog(user, ts, path, method, ip, status, ms, query, error) VALUES(?,?,?,?,?,?,?,?,?)').run(req.user ?? req.me?.name ?? '', stamp(), String(req.originalUrl).split('?')[0].slice(0, 200), req.method, String(req.ip ?? '').replace('::ffff:', ''), res.statusCode, Date.now() - t0, q.replace(/(token|password|pass|code)=[^&]*/gi, '$1=[hidden]').slice(0, 300) || null, err ? String(err).slice(0, 300) : null); db.prepare('DELETE FROM zk_applog WHERE id<(SELECT MAX(id)-5000 FROM zk_applog)').run(); } catch {} });
   next();
 }
 
 // ---------- device actions (Data Clean / Data Transfer / Device Menu / Maintain) ----------
 const dev = (id) => db.prepare('SELECT * FROM devices WHERE id=?').get(id);
 const isPush = (d) => d && d.sn && d.approved;
+const isPull = (d) => d && !d.sn && d.ip && d.approved; // reached directly over its IP and port
 const ACTIONS = {
   'clear-attlog': { label: 'Clear Attendance Data', cmd: () => 'CLEAR LOG' },
+  'set-time': { label: 'Set Time', cmd: () => `SET OPTION DateTime=${stamp()}` },
   'clear-photo': { label: 'Clear the captured image', cmd: () => 'CLEAR PHOTO' },
   'clear-admin': { label: 'Clear administrator privilege', each: (d) => db.prepare('SELECT code, name, card FROM device_users WHERE device_id=? AND priv>0').all(d.id).map(u => userCmd(u.code, u.name, u.card ?? '')) },
   'clear-all': { label: 'Clear All Data', cmd: () => 'CLEAR DATA' },
@@ -84,19 +88,24 @@ const ACTIONS = {
   'download-file': { label: 'Download File', cmd: (_d, a) => { const p = clean(a.path); if (!p) throw new Error('Enter the file name to fetch'); return `GET FILE ${p}`; } },
   'set-option': { label: 'Set Option', cmd: (_d, a) => { const n = clean(a.name), v = clean(a.value); if (!/^[A-Za-z0-9_.]{1,60}$/.test(n)) throw new Error('Option name: letters, digits, dot or underscore'); return `SET OPTION ${n}=${v}`; } },
 };
-zkdRouter.post('/zkd/devices/action', (req, res) => {
+zkdRouter.post('/zkd/devices/action', async (req, res) => {
   const b = req.body ?? {}, act = ACTIONS[b.action], list = ids(b.ids);
   if (!act) return fail(res, 'Unknown action'); if (!list.length) return fail(res, 'Select at least one device');
-  let done = 0, skipped = 0, queued = 0;
+  let done = 0, skipped = 0, queued = 0, direct = 0;
   try {
     for (const id of list) {
-      const d = dev(id); if (!isPush(d)) { skipped++; continue; }
+      const d = dev(id);
+      if (d && !d.sn && d.ip && d.approved && ['clear-attlog', 'set-time', 'upload-users', 'upload-tx', 'sync-to-device'].includes(b.action)) { // a pull device is reached directly, not through the command queue
+        try { if (b.action === 'set-time') await setDeviceClock(d); else if (b.action === 'upload-users' || b.action === 'upload-tx') await syncDevice(d, true); else if (b.action === 'sync-to-device') { const ppl = eligibleEmployees(d).map(e => ({ code: e.code, name: e.name, card: e.card_no })); if (ppl.length) { await sendUsersToDevice(d, ppl); if (getSettings().store_templates) await sendFingerprintsToDevice(d, ppl); } } else await clearDeviceLogs(d); recordOp(d.id, req.user, act.label, d.name, ''); direct++; } catch (e) { return fail(res, `${d.name}: ${e.message}`); }
+        continue;
+      }
+      if (!isPush(d)) { skipped++; continue; }
       const cmds = act.each ? act.each(d) : [act.cmd(d, b.args ?? {})];
       for (const c of cmds) { queueCommand(d.id, c); queued++; }
       recordOp(d.id, req.user, act.label, d.name, JSON.stringify(b.args ?? {}).slice(0, 200)); done++;
     }
   } catch (e) { return fail(res, e.message); }
-  res.json({ done, skipped, queued });
+  res.json({ done, skipped, queued, direct });
 });
 
 // ---------- device commands ----------
@@ -116,7 +125,7 @@ zkdRouter.post('/zkd/commands/delete', (req, res) => { let n = 0; for (const id 
 zkdRouter.get('/zkd/commands', (req, res) => { // scope=queue (waiting or fetched) | log (answered) | all
   const sc = req.query.scope, w = sc === 'queue' ? "WHERE c.status IN ('pending','sent','cancelled')" : sc === 'log' ? "WHERE c.status IN ('done','failed')" : '';
   res.json(db.prepare(`SELECT c.id, c.device_id, d.name AS device, d.sn, c.cmd, c.status, c.result, c.created, c.sent, c.returned FROM device_commands c JOIN devices d ON d.id=c.device_id ${w} ORDER BY c.id DESC LIMIT 1000`).all()
-    .map(c => ({ ...c, cmd: String(c.cmd).replace(/TMP=(\{\{bio:\d+\}\}|[A-Za-z0-9+/=]{20,})/g, 'TMP=[template]').replace(/Content=[A-Za-z0-9+/=]{40,}/g, 'Content=[photo]').replace(/\t/g, '  '), value: String(c.result ?? '').replace('Return=', '') })));
+    .map(c => ({ ...c, cmd: String(c.cmd).replace(/TMP=(\{\{bio:\d+\}\}|[A-Za-z0-9+/=]{20,})/g, 'TMP=[template]').replace(/Passwd=[^\t\r\n]+/g, 'Passwd=[hidden]').replace(/Content=[A-Za-z0-9+/=]{40,}/g, 'Content=[photo]').replace(/\t/g, '  '), value: String(c.result ?? '').replace('Return=', '') })));
 });
 
 // ---------- device parameters ----------
@@ -199,11 +208,11 @@ zkdRouter.post('/zkd/biophotos/approve', (req, res) => {
 zkdRouter.get('/zkd/biophotos/qr-info', (req, res) => res.json({ url: `${req.protocol}://${req.headers.host}/portal` }));
 
 // ---------- transactions ----------
-const TX_FROM = `FROM (SELECT l.id, l.emp_code, l.ts, l.device_id, l.source, l.uploaded, ROW_NUMBER() OVER (PARTITION BY l.emp_code, substr(l.ts,1,10) ORDER BY l.ts) AS n FROM logs l WHERE substr(l.ts,1,10)>=? AND substr(l.ts,1,10)<=?) x
-  LEFT JOIN employees e ON e.code=x.emp_code LEFT JOIN departments dp ON dp.id=e.department_id LEFT JOIN devices d ON d.id=x.device_id LEFT JOIN device_groups g ON g.id=d.group_id LEFT JOIN branches ba ON ba.id=COALESCE(g.branch_id, e.branch_id)`;
+const TX_FROM = `FROM (SELECT l.id, l.emp_code, l.ts, l.device_id, l.source, l.uploaded, l.state, l.verify, l.workcode, l.lat, l.lng, l.temp_c, l.mask, (SELECT p.id FROM punch_photos p WHERE p.emp_code=l.emp_code AND p.ts BETWEEN datetime(l.ts,'-6 seconds') AND datetime(l.ts,'+6 seconds') LIMIT 1) AS photo_id, ROW_NUMBER() OVER (PARTITION BY l.emp_code, substr(l.ts,1,10) ORDER BY l.ts) AS n FROM logs l WHERE substr(l.ts,1,10)>=? AND substr(l.ts,1,10)<=?) x
+  LEFT JOIN employees e ON e.code=x.emp_code LEFT JOIN designations dsg ON dsg.id=e.designation_id LEFT JOIN departments dp ON dp.id=e.department_id LEFT JOIN devices d ON d.id=x.device_id LEFT JOIN device_groups g ON g.id=d.group_id LEFT JOIN branches ba ON ba.id=COALESCE(g.branch_id, e.branch_id)`;
 zkdRouter.get('/zkd/transactions', (req, res) => {
   const to = DATE.test(req.query.to ?? '') ? req.query.to : dateStr(new Date()), from = DATE.test(req.query.from ?? '') ? req.query.from : addDays(to, -6), sc = scopeClause('e'), q = req.query.q ? `%${req.query.q}%` : null;
-  res.json(db.prepare(`SELECT x.id, x.emp_code AS code, e.name, dp.name AS dept, x.ts, CASE WHEN x.n%2=1 THEN 'Check In' ELSE 'Check Out' END AS state, ba.name AS area, d.sn, d.name AS device, COALESCE(x.uploaded, x.ts) AS uploaded, x.source
+  res.json(db.prepare(`SELECT x.id, x.emp_code AS code, e.name, e.last_name, dsg.name AS position, dp.name AS dept, x.ts, CASE x.state WHEN 0 THEN 'Check In' WHEN 1 THEN 'Check Out' WHEN 2 THEN 'Break Out' WHEN 3 THEN 'Break In' WHEN 4 THEN 'Overtime In' WHEN 5 THEN 'Overtime Out' ELSE CASE WHEN x.n%2=1 THEN 'Check In' ELSE 'Check Out' END END AS state, CASE x.verify WHEN 0 THEN 'Password' WHEN 1 THEN 'Fingerprint' WHEN 3 THEN 'Password' WHEN 4 THEN 'Card' WHEN 15 THEN 'Face' WHEN 25 THEN 'Palm' ELSE CASE WHEN x.source='mobile' THEN 'Mobile' WHEN x.source='manual' THEN 'Manual' WHEN x.source='fingerprint' THEN 'Fingerprint' ELSE x.verify END END AS verify_type, x.workcode, x.lat AS latitude, x.lng AS longitude, x.photo_id, CASE x.mask WHEN 1 THEN 'Yes' WHEN 0 THEN 'No' ELSE '' END AS with_mask, x.temp_c, ba.name AS area, d.sn, d.name AS device, COALESCE(x.uploaded, x.ts) AS uploaded, x.source
     ${TX_FROM} WHERE 1=1${sc.sql}${q ? ' AND (x.emp_code LIKE ? OR e.name LIKE ?)' : ''} ORDER BY x.ts DESC LIMIT 5000`).all(from, to, ...sc.args, ...(q ? [q, q] : [])));
 });
 zkdRouter.post('/zkd/transactions/delete', (req, res) => { let n = 0; for (const id of ids(req.body?.ids)) n += Number(db.prepare('DELETE FROM logs WHERE id=?').run(id).changes); res.json({ deleted: n }); });
@@ -238,31 +247,37 @@ zkdRouter.get('/zkd/devemp', (req, res) => {
   const sc = scopeClause('e'), w = req.query.device_id ? ' AND du.device_id=?' : '';
   res.json(db.prepare(`${DEVEMP_SQL} WHERE 1=1${sc.sql}${w} ORDER BY d.name, CAST(du.code AS INTEGER), du.code LIMIT 5000`).all(...sc.args, ...(w ? [Number(req.query.device_id)] : [])));
 });
-zkdRouter.post('/zkd/devemp', (req, res) => { // put chosen employees on a device
+zkdRouter.post('/zkd/devemp', async (req, res) => { // put chosen employees on a device
   const b = req.body ?? {}, d = dev(Number(b.device_id)), list = ids(b.employee_ids); if (!d) return fail(res, 'Choose a device'); if (!list.length) return fail(res, 'Choose at least one employee');
-  let n = 0;
+  let n = 0; const direct = [];
   for (const id of list) {
     const e = db.prepare('SELECT * FROM employees WHERE id=? AND active=1').get(id); if (!e) continue;
+    if (isPull(d)) direct.push({ code: e.code, name: e.name, card: e.card_no });
     db.prepare("INSERT INTO device_users(device_id, code, name, card) VALUES(?,?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, card=excluded.card, seen=datetime('now','localtime')").run(d.id, e.code, e.name, e.card_no ?? null);
     if (isPush(d)) queueCommand(d.id, userCmd(e.code, e.name, e.card_no ?? '')); n++;
   }
+  if (direct.length) { try { await sendUsersToDevice(d, direct); } catch (e) { return fail(res, 'Could not write to the device: ' + e.message); } }
   res.json({ added: n, queued: isPush(d) });
 });
-zkdRouter.post('/zkd/devemp/delete', (req, res) => {
-  let n = 0;
+zkdRouter.post('/zkd/devemp/delete', async (req, res) => {
+  let n = 0; const direct = new Map();
   for (const id of ids(req.body?.ids)) {
     const u = db.prepare('SELECT rowid AS id, device_id, code FROM device_users WHERE rowid=?').get(id); if (!u) continue;
     const d = dev(u.device_id); if (isPush(d)) queueCommand(d.id, `DATA DELETE USERINFO PIN=${clean(u.code)}`);
-    db.prepare('DELETE FROM device_users WHERE rowid=?').run(id); n++;
+    if (isPull(d)) { if (!direct.has(d.id)) direct.set(d.id, []); direct.get(d.id).push(u.code); }
   }
+  for (const [did, codes] of direct) { try { await removeUsersFromDevice(dev(did), codes); } catch (e) { return fail(res, 'Could not delete on the device: ' + e.message); } } // nothing is forgotten here unless the device did it
+  for (const id of ids(req.body?.ids)) n += Number(db.prepare('DELETE FROM device_users WHERE rowid=?').run(id).changes);
   res.json({ deleted: n });
 });
-zkdRouter.put('/zkd/devemp/:id', (req, res) => {
+zkdRouter.put('/zkd/devemp/:id', async (req, res) => {
   const u = db.prepare('SELECT rowid AS id, * FROM device_users WHERE rowid=?').get(req.params.id); if (!u) return fail(res, 'Not found', 404);
   const priv = [0, 2, 6, 14].includes(Number(req.body?.priv ?? u.priv)) ? Number(req.body?.priv ?? u.priv) : null, vm = Number(req.body?.verify_mode ?? u.verify_mode);
   if (priv === null) return fail(res, 'Privilege: user, enroller, administrator or super administrator'); if (!(Number.isInteger(vm) && vm >= 0 && vm <= 15)) return fail(res, 'Unknown verify mode');
+  const d = dev(u.device_id);
+  if (isPull(d)) { try { await sendUsersToDevice(d, [{ code: u.code, name: u.name || u.code, card: u.card, role: priv }]); } catch (e) { return fail(res, 'Could not update the device: ' + e.message); } }
   db.prepare('UPDATE device_users SET priv=?, verify_mode=? WHERE rowid=?').run(priv, vm, u.id);
-  const d = dev(u.device_id); if (isPush(d)) queueCommand(d.id, privCmd(u.code, u.name, u.card ?? '', priv));
+  if (isPush(d)) queueCommand(d.id, privCmd(u.code, u.name, u.card ?? '', priv));
   res.json({ ok: true });
 });
 zkdRouter.post('/zkd/devemp/transfer', (req, res) => { // Data Transfer: resync | reupload | delete-bio
@@ -277,14 +292,20 @@ zkdRouter.post('/zkd/devemp/transfer', (req, res) => { // Data Transfer: resync 
   }
   res.json({ done: n });
 });
-zkdRouter.post('/zkd/devemp/enroll', (req, res) => {
+zkdRouter.post('/zkd/devemp/enroll', async (req, res) => {
   const list = ids(req.body?.ids), type = req.body?.type; if (!list.length) return fail(res, 'Tick at least one row');
   if (!['fp', 'palm', 'face'].includes(type)) return fail(res, 'Choose fingerprint, palm or face photo'); let n = 0;
   for (const id of list) {
-    const u = db.prepare('SELECT * FROM device_users WHERE rowid=?').get(id); if (!u) continue; const d = dev(u.device_id); if (!isPush(d)) continue;
+    const u = db.prepare('SELECT * FROM device_users WHERE rowid=?').get(id); if (!u) continue; const d = dev(u.device_id);
+    if (isPull(d) && type === 'fp') { // a pull device: open its enrolment screen directly
+      const e = db.prepare('SELECT * FROM employees WHERE code=?').get(u.code); if (!e || enrolling.has(d.id)) continue;
+      try { await startEnroll(d, e, 0); n++; } catch (err) { return fail(res, `${d.name}: ${err.message}`); }
+      continue;
+    }
+    if (!isPush(d)) continue;
     queueCommand(d.id, type === 'fp' ? `ENROLL_FP PIN=${clean(u.code)}\tFID=0\tRETRY=3\tOVERWRITE=1` : type === 'palm' ? `ENROLL_PALM PIN=${clean(u.code)}\tFID=0\tRETRY=3\tOVERWRITE=1` : `ENROLL_MF PIN=${clean(u.code)}\tRETRY=3\tOVERWRITE=1`); n++;
   }
-  if (!n) return fail(res, 'Only approved push devices can enroll'); res.json({ queued: n });
+  if (!n) return fail(res, 'Only approved devices can enroll (palm and face need a push device)'); res.json({ queued: n });
 });
 
 // ---------- messages with device targeting ----------
@@ -425,14 +446,14 @@ gps('dept', 'zk_gps_dept', 'department_id', 'departments', (did, site) => { for 
 
 // ---------- device configuration (defaults) ----------
 const CFG = { zkd_delay: 10, zkd_error_delay: 30, zkd_realtime: 1, zkd_auto_approve: 0, zkd_timezone: '' };
-const cfgGet = () => { const o = { ...CFG }; for (const r of db.prepare("SELECT key, value FROM settings WHERE key LIKE 'zkd\\_%' ESCAPE '\\'").all()) if (r.key in o) o[r.key] = typeof CFG[r.key] === 'number' ? Number(r.value) : r.value; const S = getSettings(); return { ...o, device_offline_min: S.device_offline_min, store_templates: S.store_templates }; };
+const cfgGet = () => { const o = { ...CFG }; for (const r of db.prepare("SELECT key, value FROM settings WHERE key LIKE 'zkd\\_%' ESCAPE '\\'").all()) if (r.key in o) o[r.key] = typeof CFG[r.key] === 'number' ? Number(r.value) : r.value; const S = getSettings(); return { ...o, device_offline_min: S.device_offline_min, monitor_refresh_sec: S.monitor_refresh_sec, store_templates: S.store_templates }; };
 export const autoApprove = () => cfgGet().zkd_auto_approve === 1;
 zkdRouter.get('/zkd/config', (_q, res) => res.json(cfgGet()));
 zkdRouter.put('/zkd/config', (req, res) => {
   const b = req.body ?? {}, up = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
   const rng = (k, lo, hi, l) => { if (k in b) { const v = Number(b[k]); if (!(Number.isInteger(v) && v >= lo && v <= hi)) return `${l} must be a whole number from ${lo} to ${hi}`; } return null; };
-  const err = rng('zkd_delay', 1, 3600, 'Upload interval') || rng('zkd_error_delay', 1, 3600, 'Retry delay') || rng('zkd_realtime', 0, 1, 'Realtime') || rng('zkd_auto_approve', 0, 1, 'Auto approve') || rng('device_offline_min', 1, 1440, 'Offline after'); if (err) return fail(res, err);
+  const err = rng('zkd_delay', 1, 3600, 'Upload interval') || rng('zkd_error_delay', 1, 3600, 'Retry delay') || rng('zkd_realtime', 0, 1, 'Realtime') || rng('zkd_auto_approve', 0, 1, 'Auto approve') || rng('device_offline_min', 1, 1440, 'Offline after') || rng('monitor_refresh_sec', 3, 3600, 'Monitor refresh'); if (err) return fail(res, err);
   for (const k of Object.keys(CFG)) if (k in b) up.run(k, String(k === 'zkd_timezone' ? String(b[k] ?? '').slice(0, 40) : Number(b[k])));
-  setSettings({ device_offline_min: b.device_offline_min, store_templates: b.store_templates }); res.json(cfgGet());
+  setSettings({ device_offline_min: b.device_offline_min, monitor_refresh_sec: b.monitor_refresh_sec, store_templates: b.store_templates }); res.json(cfgGet());
 });
 zkdRouter.post('/zkd/config/apply', (_q, res) => { const c = cfgGet(); const r = db.prepare('UPDATE devices SET delay=?, error_delay=?, realtime=?' + (c.zkd_timezone ? ', timezone=?' : '')).run(c.zkd_delay, c.zkd_error_delay, c.zkd_realtime, ...(c.zkd_timezone ? [c.zkd_timezone] : [])); res.json({ devices: Number(r.changes) }); });

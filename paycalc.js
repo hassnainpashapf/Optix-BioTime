@@ -32,10 +32,13 @@ export function statutory(emp, S) { // monthly fixed contributions
 // ---- revisions
 export const firstOf = (d) => String(d).slice(0, 7) + '-01';
 const thisMonth = () => new Date().toLocaleDateString('sv').slice(0, 7);
-export function addRevision(empId, { effective_from, basic, components = [], note = null }, actor) {
+const FCOLS = ['f_deduction', 'f_exception', 'f_increment', 'f_leave', 'f_overtime'];
+export function addRevision(empId, { effective_from, basic, components = [], note = null, formulas = null }, actor) {
   const gross = round2(basic + components.reduce((a, c) => a + c.amount, 0)), from = firstOf(effective_from);
+  const prev = db.prepare('SELECT * FROM emp_salary WHERE employee_id=? ORDER BY (effective_from=?) DESC, effective_from DESC, id DESC LIMIT 1').get(empId, from); // a new revision keeps the formulas of the one before it unless new ones are given
   db.prepare('DELETE FROM emp_salary WHERE employee_id=? AND effective_from=?').run(empId, from); // one revision per month: the last one wins
-  const id = Number(db.prepare('INSERT INTO emp_salary(employee_id, effective_from, basic, components, gross, note, created_by) VALUES(?,?,?,?,?,?,?)').run(empId, from, round2(basic), JSON.stringify(components), gross, note, actor).lastInsertRowid);
+  const f = Object.fromEntries(FCOLS.map(c => [c, formulas && c in formulas ? (formulas[c] || null) : (prev?.[c] ?? null)]));
+  const id = Number(db.prepare(`INSERT INTO emp_salary(employee_id, effective_from, basic, components, gross, note, created_by, ${FCOLS}) VALUES(?,?,?,?,?,?,?,${FCOLS.map(() => '?')})`).run(empId, from, round2(basic), JSON.stringify(components), gross, note, actor, ...FCOLS.map(c => f[c])).lastInsertRowid);
   syncSalary(empId); return { id, gross };
 }
 // employees.salary mirrors the salary in force this month, so the employee list and API stay right.

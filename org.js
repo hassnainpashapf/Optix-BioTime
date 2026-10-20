@@ -161,7 +161,11 @@ for (const [path, [table, col, fields]] of Object.entries(SIMPLE)) {
   orgRouter.delete(`/org/${path}/:id`, (req, res) => {
     const id = Number(req.params.id), r = db.prepare(`SELECT name FROM ${table} WHERE id=?`).get(id); if (!r) return fail(res, 'Not found', 404);
     const n = db.prepare(`SELECT COUNT(*) n FROM employees WHERE ${col}=?`).get(id).n; if (n) return fail(res, `${r.name} is still used by ${n} employee${n === 1 ? '' : 's'}. Move them first.`);
-    if (path === 'areas' && db.prepare('SELECT 1 FROM device_groups WHERE branch_id=?').get(id)) return fail(res, `${r.name} still has device groups. Remove or move them first.`);
+    if (path === 'areas') { // the device group made for an area when a device is added to it is invisible in this menu, so empty ones go with the area
+      const used = db.prepare('SELECT d.name FROM devices d JOIN device_groups g ON g.id=d.group_id WHERE g.branch_id=?').all(id);
+      if (used.length) return fail(res, `${r.name} still has ${used.length === 1 ? 'a device' : used.length + ' devices'} (${used.slice(0, 3).map(x => x.name).join(', ')}). Change their Area or delete them first.`);
+      db.prepare('DELETE FROM device_groups WHERE branch_id=?').run(id);
+    }
     db.prepare(`DELETE FROM ${table} WHERE id=?`).run(id); res.json({ ok: true });
   });
   orgRouter.post(`/org/${path}/import`, (req, res) => { // code,name  (areas: code,name,address)

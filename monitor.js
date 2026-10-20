@@ -21,21 +21,62 @@ monitorRouter.get('/monitor', (req, res) => {
     const b = slot(d.branch || '(no branch)'); b.devices++; if (d.sn ? (d.last_seen && pushOnline(d, nowMs, S)) : d.online) b.devices_online++;
   }
   const sc = scopeClause('e');
-  const feed = db.prepare(`SELECT l.id, l.ts, l.emp_code AS code, e.id AS employee_id, e.photo IS NOT NULL AS has_photo, e.name, br.name AS branch, l.source, v.name AS device, l.temp_c FROM logs l ${sc.sql ? 'JOIN' : 'LEFT JOIN'} employees e ON e.code=l.emp_code
+  const feed = db.prepare(`SELECT l.id, l.ts, l.emp_code AS code, e.id AS employee_id, e.photo IS NOT NULL AS has_photo, e.name, br.name AS branch, l.source, v.name AS device, l.temp_c, l.state, (SELECT COUNT(*) FROM logs x WHERE x.emp_code=l.emp_code AND x.ts<l.ts AND x.ts>=substr(l.ts,1,10)) AS nth, (SELECT p.id FROM punch_photos p WHERE p.emp_code=l.emp_code AND p.ts BETWEEN datetime(l.ts,'-6 seconds') AND datetime(l.ts,'+6 seconds') ORDER BY p.id DESC LIMIT 1) AS photo_id FROM logs l ${sc.sql ? 'JOIN' : 'LEFT JOIN'} employees e ON e.code=l.emp_code
     LEFT JOIN branches br ON br.id=e.branch_id LEFT JOIN devices v ON v.id=l.device_id WHERE l.ts>=? AND l.ts<?${sc.sql} ORDER BY l.id DESC LIMIT ?`).all(t + ' 00:00:00', addDays(t, 1) + ' 00:00:00', ...sc.args, Math.min(100, Number(req.query.limit) || 30));
-  if (!feed.length && req.query.recent) feed.push(...db.prepare(`SELECT l.id, l.ts, l.emp_code AS code, e.id AS employee_id, e.photo IS NOT NULL AS has_photo, e.name, br.name AS branch, l.source, v.name AS device, l.temp_c FROM logs l ${sc.sql ? 'JOIN' : 'LEFT JOIN'} employees e ON e.code=l.emp_code
+  if (!feed.length && req.query.recent) feed.push(...db.prepare(`SELECT l.id, l.ts, l.emp_code AS code, e.id AS employee_id, e.photo IS NOT NULL AS has_photo, e.name, br.name AS branch, l.source, v.name AS device, l.temp_c, l.state, (SELECT COUNT(*) FROM logs x WHERE x.emp_code=l.emp_code AND x.ts<l.ts AND x.ts>=substr(l.ts,1,10)) AS nth, (SELECT p.id FROM punch_photos p WHERE p.emp_code=l.emp_code AND p.ts BETWEEN datetime(l.ts,'-6 seconds') AND datetime(l.ts,'+6 seconds') ORDER BY p.id DESC LIMIT 1) AS photo_id FROM logs l ${sc.sql ? 'JOIN' : 'LEFT JOIN'} employees e ON e.code=l.emp_code
     LEFT JOIN branches br ON br.id=e.branch_id LEFT JOIN devices v ON v.id=l.device_id WHERE 1=1${sc.sql} ORDER BY l.id DESC LIMIT ?`).all(...sc.args, Math.min(100, Number(req.query.limit) || 30)));
   const branches = [...by.values()].sort((a, b) => a.name.localeCompare(b.name)), sum = (k) => branches.reduce((s, b) => s + b[k], 0);
-  res.json({ now: new Date().toLocaleString('sv'), totals: Object.fromEntries(Object.keys(blank()).map(k => [k, sum(k)])), branches, feed });
+  const STATES = ['Check In', 'Check Out', 'Break Out', 'Break In', 'Overtime In', 'Overtime Out']; // a device that reports no punch code: the first punch of the day is In, the next Out, and so on
+  for (const f of feed) { f.state = f.state !== null && STATES[f.state] ? STATES[f.state] : (f.nth % 2 === 0 ? 'Check In' : 'Check Out'); delete f.nth; }
+  res.json({ refresh_sec: Math.min(3600, Math.max(3, Number(S.monitor_refresh_sec) || 10)), now: new Date().toLocaleString('sv'), totals: Object.fromEntries(Object.keys(blank()).map(k => [k, sum(k)])), branches, feed });
 });
 
 // Mask & Temperature Detection (MTD): punches with the body temperature and mask flag the device reported. Abnormal = temperature at or above the alert temperature, or no mask (mask=0).
+// The picture a device took at a punch (shown in the dashboard's Real-Time Monitor).
+monitorRouter.get('/punch-photo/:id', (req, res) => {
+  const r = db.prepare('SELECT data FROM punch_photos WHERE id=?').get(Number(req.params.id));
+  if (!r) return res.status(404).json({ error: 'No photo' });
+  res.type('image/jpeg').set('Cache-Control', 'private, max-age=86400').send(Buffer.from(r.data));
+});
+
 monitorRouter.get('/mtd/records', (req, res) => {
   const S = getSettings(), thr = Number(S.temp_alert_c) || 0, t = dateStr(new Date()), from = /^\d{4}-\d\d-\d\d$/.test(req.query.from ?? '') ? req.query.from : t, to = /^\d{4}-\d\d-\d\d$/.test(req.query.to ?? '') ? req.query.to : t, sc = scopeClause('e');
   const rows = db.prepare(`SELECT l.id, l.ts, l.emp_code AS code, e.id AS employee_id, e.photo IS NOT NULL AS has_photo, e.name, d.name AS department, br.name AS branch, v.name AS device, l.temp_c, l.mask FROM logs l ${sc.sql ? 'JOIN' : 'LEFT JOIN'} employees e ON e.code=l.emp_code LEFT JOIN departments d ON d.id=e.department_id
     LEFT JOIN branches br ON br.id=e.branch_id LEFT JOIN devices v ON v.id=l.device_id WHERE l.ts>=? AND l.ts<?${sc.sql} ORDER BY l.id DESC LIMIT ?`).all(from + ' 00:00:00', addDays(to, 1) + ' 00:00:00', ...sc.args, Math.min(500, Number(req.query.limit) || 100))
     .map(r => ({ ...r, abnormal: !!((thr && r.temp_c != null && r.temp_c >= thr) || r.mask === 0), hot: !!(thr && r.temp_c != null && r.temp_c >= thr) }));
   res.json({ threshold: thr, from, to, rows, abnormal: rows.filter(r => r.abnormal).length, total: rows.length });
+});
+
+// ---- MTD reports (Daily Details, Department Summary, Abnormal Details): like BioTime, every punch counts as checked; a device that sends no temperature shows 0.0 and no mask as "No". ----
+const idl = (v) => { const a = String(v ?? '').split(',').map(Number).filter(n => Number.isFinite(n) && n > 0); return a.length ? a : null; };
+function mtdPunches(req) {
+  const S = getSettings(), thr = Number(S.temp_alert_c) || 0, maskAlarm = S.mtd_mask_alarm !== 0, t = dateStr(new Date());
+  const D = /^\d{4}-\d\d-\d\d$/, to = D.test(req.query.to ?? '') ? req.query.to : t, from = D.test(req.query.from ?? '') ? req.query.from : to.slice(0, 8) + '01', sc = scopeClause('e');
+  let sql = `SELECT l.id, l.ts, l.emp_code AS code, e.id AS eid, COALESCE(e.name, l.emp_code) AS name, d.id AS dept_id, d.code AS dept_code, d.name AS dept, l.temp_c, l.mask FROM logs l JOIN employees e ON e.code=l.emp_code LEFT JOIN departments d ON d.id=e.department_id WHERE l.ts>=? AND l.ts<?${sc.sql}`;
+  const a = [from + ' 00:00:00', addDays(to, 1) + ' 00:00:00', ...sc.args];
+  for (const [k, col] of [['departments', 'e.department_id'], ['areas', 'e.branch_id'], ['groups', 'e.group_id'], ['employees', 'e.id']]) { const ids = idl(req.query[k]); if (ids) { sql += ` AND ${col} IN (${ids.map(() => '?')})`; a.push(...ids); } }
+  const rows = db.prepare(sql + ' ORDER BY l.ts DESC LIMIT 60000').all(...a).map(r => { const temp = r.temp_c ?? 0, hot = !!(thr && temp >= thr), nomask = maskAlarm && r.mask !== 1; return { ...r, temp, hot, nomask, abnormal: hot || nomask, day: r.ts.slice(0, 10) }; });
+  return { rows, from, to, thr };
+}
+monitorRouter.get('/mtd/daily', (req, res) => {
+  const { rows } = mtdPunches(req), by = new Map();
+  for (const r of rows.slice().reverse()) { const k = r.code + '|' + r.day; if (!by.has(k)) by.set(k, { code: r.code, name: r.name, dept: r.dept ?? '', date: r.day, qty: 0, temps: [] }); const o = by.get(k); o.qty++; o.temps.push(r.temp); }
+  res.json([...by.values()].sort((x, y) => y.date.localeCompare(x.date) || x.code.localeCompare(y.code, undefined, { numeric: true })).map(o => ({ ...o, temps: o.temps.map(t => t.toFixed(1)).join(',') })));
+});
+monitorRouter.get('/mtd/deptsummary', (req, res) => {
+  const { rows, from, to } = mtdPunches(req), sc = scopeClause('e');
+  const depts = db.prepare(`SELECT d.id, d.code, d.name, (SELECT COUNT(*) FROM employees e WHERE e.department_id=d.id AND e.active=1${sc.sql}) AS n FROM departments d ORDER BY d.code`).all(...sc.args);
+  const days = []; for (let d = to; d >= from && days.length < 400; d = addDays(d, -1)) days.push(d);
+  const out = [];
+  for (const dp of depts) for (const day of days) {
+    const mine = rows.filter(r => r.dept_id === dp.id && r.day === day), people = new Set(mine.map(r => r.code)).size;
+    out.push({ dept_code: dp.code ?? '', dept_name: dp.name, employees: dp.n, date: day, checked: mine.length, regular: mine.filter(r => !r.abnormal).length, abnormal: mine.filter(r => r.abnormal).length, abnormal_temp: mine.filter(r => r.hot).length, persons: people, not_persons: Math.max(0, dp.n - people) });
+  }
+  res.json(out.sort((x, y) => y.date.localeCompare(x.date) || x.dept_name.localeCompare(y.dept_name)));
+});
+monitorRouter.get('/mtd/abnormal', (req, res) => {
+  const { rows } = mtdPunches(req);
+  res.json(rows.filter(r => r.abnormal).slice(0, 20000).map(r => ({ code: r.code, name: r.name, dept: r.dept ?? '', date: r.day, time: r.ts.slice(11, 19), temp: r.temp_c, with_mask: r.mask === 1 ? 'Yes' : 'No', hot: r.hot })));
 });
 
 // MTD dashboard numbers: today's status by person, by department, and the month day by day.

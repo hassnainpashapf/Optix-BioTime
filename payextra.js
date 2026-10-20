@@ -27,7 +27,7 @@ function writeItems(x) {
   return skipped;
 }
 const clearItems = (id) => db.prepare("DELETE FROM payroll_items WHERE note LIKE ? AND month NOT IN (SELECT month FROM payroll_runs)").run(`%${tag(id)}`).changes;
-const list = (kind) => { const sc = scopeClause('e'); return db.prepare(`SELECT x.*, e.code, e.name, d.name AS department FROM pay_extras x JOIN employees e ON e.id=x.employee_id LEFT JOIN departments d ON d.id=e.department_id WHERE x.kind=?${sc.sql} ORDER BY x.id DESC LIMIT 1000`).all(kind, ...sc.args); };
+const list = (kind) => { const sc = scopeClause('e'); return db.prepare(`SELECT x.*, e.code, e.name, e.last_name, d.name AS department FROM pay_extras x JOIN employees e ON e.id=x.employee_id LEFT JOIN departments d ON d.id=e.department_id WHERE x.kind=?${sc.sql} ORDER BY x.id DESC LIMIT 1000`).all(kind, ...sc.args); };
 payExtraRouter.get('/payroll/extras', (req, res) => { if (!KINDS.includes(req.query.kind)) return fail(res, 'kind must be loan, advance or reimbursement'); res.json(list(req.query.kind).map(x => ({ ...x, monthly: x.kind === 'loan' ? Math.round(x.amount / Math.max(1, x.installments) * 100) / 100 : null }))); });
 payExtraRouter.post('/payroll/extras', (req, res) => {
   const b = req.body ?? {}, sc = scopeClause('e');

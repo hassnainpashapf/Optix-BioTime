@@ -13,3 +13,6 @@ server.json
 data
 docs/ref-bt-*
 docs/ZK-AGENT-BRIEF.md
+android/.gradle
+android/local.properties
+public/downloads

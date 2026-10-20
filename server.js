@@ -35,6 +35,7 @@ import { adminLog, lockedFor, loginFailed, loginOk, loginDone, accountDisabled, 
 import { payCodesRouter } from './paycodes.js';
 import { hrxRouter, startHr } from './hrx.js';
 import { payrollxRouter, approvalState, approvalOk, startPayroll } from './payrollx.js';
+import { payformulaRouter } from './payformula.js';
 import { meetingsRouter } from './meetings.js';
 import { zkpRouter } from './zk-personnel.js';
 import { zkdRouter, mobileLog } from './zk-device.js';
@@ -59,6 +60,7 @@ app.use((req, res, next) => {
 });
 app.use('/api/restore', express.json({ limit: '500mb' })); // a whole database backup arrives as base64
 app.use(express.json({ limit: '15mb' })); // photos and documents arrive as base64
+app.use('/iclock/fdata', express.raw({ type: '*/*', limit: '8mb' })); // a punch photo is binary JPEG data
 app.use(express.text({ type: '*/*', limit: '20mb' })); // ADMS bodies are tab-separated text, not JSON
 app.get('/favicon.ico', (_q, res) => res.status(204).end());
 app.use('/iclock', admsRouter); // device push endpoints: devices cannot send a login token
@@ -172,6 +174,7 @@ app.use('/api', attSetupRouter);
 app.use('/api', payCodesRouter);
 app.use('/api', hrxRouter);
 app.use('/api', payrollxRouter);
+app.use('/api', payformulaRouter);
 app.use('/api', meetingsRouter);
 app.use('/api', zkpRouter);
 app.use('/api', zkdRouter);
@@ -230,7 +233,7 @@ crud('branches', 'branches', ['name', 'company_id', 'address'],
   'SELECT b.*, c.name AS company FROM branches b LEFT JOIN companies c ON c.id=b.company_id ORDER BY b.name');
 crud('designations', 'designations', ['name']);
 crud('emp_groups', 'emp_groups', ['name']);
-crud('custom_fields', 'custom_fields', ['label', 'type', 'options']);
+crud('custom_fields', 'custom_fields', ['label', 'type', 'options', 'uniq', 'enabled']);
 app.get('/api/schedules', (_q, res) => {
   const sc = scopeClause('e');
   res.json(db.prepare(`SELECT c.*, e.name AS employee, s.name AS shift FROM schedules c JOIN employees e ON e.id=c.employee_id JOIN shifts s ON s.id=c.shift_id WHERE 1=1${sc.sql} ORDER BY from_date DESC`).all(...sc.args));
@@ -271,6 +274,15 @@ app.get('/api/logs', (req, res) => {
 
 app.get('/api/settings', (_q, res) => res.json(getSettings()));
 app.put('/api/settings', (req, res) => res.json(setSettings(req.body)));
+// Company stamp (an image printed on payslips): kept in the settings table as a data URL
+app.get('/api/payroll/stamp', (_q, res) => res.json({ stamp: db.prepare("SELECT value FROM settings WHERE key='company_stamp'").get()?.value ?? '' }));
+app.put('/api/payroll/stamp', (req, res) => {
+  const v = String(req.body?.stamp ?? '');
+  if (!v) { db.prepare("DELETE FROM settings WHERE key='company_stamp'").run(); return res.json({ stamp: '' }); }
+  if (!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(v)) return res.status(400).json({ error: 'The stamp must be a PNG or JPEG image' });
+  if (v.length > 700000) return res.status(400).json({ error: 'The stamp image is too big (500 KB at most)' });
+  db.prepare("INSERT INTO settings(key,value) VALUES('company_stamp',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(v); res.json({ stamp: v });
+});
 
 // Restore: validate the uploaded file, queue it, then stop. The next start swaps it in before the database opens.
 // (Run the server as a service - launchd KeepAlive / systemd Restart - and it comes straight back.)
@@ -306,11 +318,11 @@ app.get('/api/report/summary', (req, res) => res.json(summarize(attendanceReport
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/;
 const nowStr = () => new Date().toLocaleString('sv');
 const runOf = (m) => db.prepare('SELECT * FROM payroll_runs WHERE month=?').get(m);
-function payrollView(m, filter) {
-  const run = runOf(m);
+function payrollView(m, filter, period) {
+  const run = period ? null : runOf(m);
   const needs = !!getSettings().payroll_approval;
   if (run) { const ok = allowedCodes(); return { status: run.status, finalized_at: run.finalized_at, paid_at: run.paid_at, approval_required: needs, approval: approvalState(m), rows: JSON.parse(run.data).filter(r => !ok || ok.has(r.code)) }; }
-  return { status: 'draft', approval_required: needs, approval: needs ? approvalState(m) : { status: 'none' }, rows: payroll(m, filter) };
+  return { status: 'draft', approval_required: needs, approval: needs ? approvalState(m) : { status: 'none' }, rows: payroll(m, filter, period) };
 }
 app.get('/api/payroll/items', (req, res) => {
   if (!MONTH.test(req.query.month ?? '')) return res.status(400).json({ error: 'month=YYYY-MM required' });
@@ -353,7 +365,15 @@ app.post('/api/payroll/reopen', (req, res) => {
 });
 
 const month = (q) => /^\d{4}-\d\d$/.test(q.month ?? '') ? q.month : dateStr(new Date()).slice(0, 7);
-app.get('/api/report/payroll', (req, res) => res.json(payrollView(month(req.query), { departmentId: req.query.department_id || null })));
+app.get('/api/report/payroll', (req, res) => {
+  const q = req.query, DATE = /^\d{4}-\d\d-\d\d$/; let period = null;
+  if (q.from || q.to) {
+    if (!DATE.test(q.from ?? '') || !DATE.test(q.to ?? '') || q.to < q.from) return res.status(400).json({ error: 'Give a valid Start Date and End Date' });
+    if ((Date.parse(q.to) - Date.parse(q.from)) / 864e5 > 61) return res.status(400).json({ error: 'A payroll period can be at most 62 days' });
+    period = { from: q.from, to: q.to };
+  }
+  res.json(payrollView(period ? period.from.slice(0, 7) : month(q), { departmentId: q.department_id || null }, period));
+});
 
 app.get('/api/report/:kind.csv', (req, res) => {
   const k = req.params.kind;

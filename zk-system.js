@@ -6,7 +6,7 @@ import { createConnection } from 'node:net';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { db, hash, DB_FILE, validateBackup } from './db.js';
-import { MODULES, userScope } from './rbac.js';
+import { MODULES, SUBKEYS, userScope } from './rbac.js';
 import { SCOPES, ENDPOINTS } from './api.js';
 import { sendMessage } from './gateway.js';
 import { attendanceReport } from './report.js';
@@ -26,6 +26,7 @@ const lim = (q, d = 1000) => Math.min(Math.max(Number(q.limit) || d, 1), 5000);
 
 // ======================= UserGroup (= roles) =======================
 zkSystemRouter.get('/zk/modules', (_q, res) => res.json(MODULES));
+zkSystemRouter.get('/zk/subpages', (_q, res) => res.json(SUBKEYS));
 
 // ======================= User =======================
 const userRows = () => {
@@ -275,7 +276,7 @@ const DEFAULT = {
   punchstate: Object.fromEntries(Array.from({ length: 16 }, (_, i) => ['a' + i, ['Check In', 'Check Out', 'Break Out', 'Break In', 'Overtime In', 'Overtime Out'][i] ?? (i === 15 ? 'Unknown' : String(i))])),
 };
 const mask = (name, v) => { const o = { ...v }; for (const k of SECRET[name] ?? []) { o['has_' + k] = !!o[k]; o[k] = ''; } return o; };
-const getConf = (name) => ({ ...DEFAULT[name], ...(kvGet(name, {}) ?? {}) });
+export const getConf = (name) => ({ ...DEFAULT[name], ...(kvGet(name, {}) ?? {}) });
 export const twilioConf = () => getConf('twilio');
 zkSystemRouter.get('/zk/settings/security', (_q, res) => res.json({ ...security(), defaults: SECURITY_DEFAULTS }));
 zkSystemRouter.put('/zk/settings/security', (req, res) => {
@@ -312,7 +313,7 @@ zkSystemRouter.put('/zk/alert-settings/:id', (req, res) => {
 zkSystemRouter.post('/zk/settings/ldap/test', async (_q, res) => { const c = getConf('ldap'); if (!c.host) return fail(res, 'Enter the host address first'); const r = await tcp(c.host, c.port); r.up ? res.json({ ok: true, message: `${c.host}:${c.port} accepts connections` }) : fail(res, `Cannot reach ${c.host}:${c.port} (${r.why})`); });
 zkSystemRouter.post('/zk/settings/zoom/test', async (_q, res) => {
   const c = getConf('zoom'); if (!(c.account_id && c.client_id && c.client_secret)) return fail(res, 'Save the Account ID, Client ID and Client Secret first');
-  try { const r = await fetch(`https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(c.account_id)}`, { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(`${c.client_id}:${c.client_secret}`).toString('base64') }, signal: AbortSignal.timeout(10000) });
+  try { const r = await fetch(`${process.env.ZOOM_OAUTH_BASE || 'https://zoom.us'}/oauth/token?grant_type=account_credentials&account_id=${encodeURIComponent(c.account_id)}`, { method: 'POST', headers: { Authorization: 'Basic ' + Buffer.from(`${c.client_id}:${c.client_secret}`).toString('base64') }, signal: AbortSignal.timeout(10000) });
     r.ok ? res.json({ ok: true, message: 'Zoom accepted the credentials' }) : fail(res, `Zoom answered ${r.status}: check the credentials`); } catch (e) { fail(res, 'Could not reach Zoom: ' + e.message); }
 });
 zkSystemRouter.post('/zk/settings/twilio/test', async (req, res) => {

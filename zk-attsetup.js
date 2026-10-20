@@ -91,6 +91,24 @@ function seedPayCodes() {
   });
 }
 seedPayCodes();
+// BioTime's own Pay Code list (read from the real app): the same codes, names, types, units, symbols and order. Our status rows take the matching code; the codes that have no attendance status of their own are added as rows that only describe them.
+if (!db.prepare("SELECT 1 FROM settings WHERE key='paycodes_real'").get()) {
+  const REAL = [['REG', 'Regular', 'Regular', 'Hour', 'P', 'Present'], ['L', 'Late In', 'Exception', 'Minute', 'L', 'Late'], ['E', 'Early Out', 'Exception', 'Minute', 'E'], ['A', 'Absence', 'Exception', 'Hour', 'A', 'Absent'],
+    ['NOT', 'Normal OT', 'Overtime', 'Hour', ''], ['WOT', 'Weekend OT', 'Overtime', 'Hour', ''], ['HOT', 'Holiday OT', 'Overtime', 'Hour', ''], ['OT1', 'OT1', 'Overtime', 'Hour', ''], ['OT2', 'OT2', 'Overtime', 'Hour', ''], ['OT3', 'OT3', 'Overtime', 'Hour', ''],
+    ['AL', 'Annual Leave', 'Leave', 'Hour', ''], ['SL', 'Sick Leave', 'Leave', 'Hour', ''], ['CL', 'Casual Leave', 'Leave', 'Hour', ''], ['ML', 'Maternity Leave', 'Leave', 'Hour', ''], ['COL', 'Compassionate Leave', 'Leave', 'Hour', ''], ['BT', 'Business Trip', 'Leave', 'Hour', ''],
+    ['CP', 'Compensatory', 'Regular', 'Hour', ''], ['CPL', 'Compensatory Leave', 'Leave', 'Hour', '']];
+  db.exec('BEGIN');
+  try {
+    REAL.forEach(([code, name, ptype, unit, symbol, status], i) => {
+      const own = status && db.prepare('SELECT rowid AS rid, * FROM pay_codes WHERE status=?').get(status);
+      if (own && !own.custom) db.prepare('UPDATE pay_codes SET code=?, label=?, ptype=?, unit=?, symbol=?, ord=? WHERE status=?').run(code, name, ptype, unit, symbol, i + 1, status);
+      else if (!own && !db.prepare('SELECT 1 FROM pay_codes WHERE code=?').get(code)) db.prepare('INSERT INTO pay_codes(status, code, pay_factor, label, ptype, unit, symbol, ord, round_off, display) VALUES(?,?,?,?,?,?,?,?,?,1)').run('code:' + code, code, 1, name, ptype, unit, symbol, i + 1, 'Round Off');
+    });
+    let n = REAL.length; for (const r of db.prepare("SELECT rowid AS rid, ord FROM pay_codes WHERE (ord IS NULL OR ord<=18) AND code NOT IN ('REG','L','E','A','NOT','WOT','HOT','OT1','OT2','OT3','AL','SL','CL','ML','COL','BT','CP','CPL') ORDER BY ord, rowid").all()) db.prepare('UPDATE pay_codes SET ord=? WHERE rowid=?').run(++n, r.rid);
+    db.prepare("INSERT INTO settings(key,value) VALUES('paycodes_real','1')").run(); db.exec('COMMIT');
+  } catch (e) { db.exec('ROLLBACK'); throw e; }
+  bustCodes();
+}
 const PC_TYPES = ['Regular', 'Overtime', 'Leave', 'Exception', 'Training'], PC_UNITS = ['Minute', 'Hour', 'Workday', 'HH:MM'], PC_ROUND = ['Round Off', 'Round Up', 'Round Down'];
 R.get('/att/paycodes', (_q, res) => { seedPayCodes(); res.json(db.prepare('SELECT rowid AS id, status, code, COALESCE(label, status) AS name, pay_factor, ptype, unit, symbol, ord, descr, color, display, fixed_hours, round_off, min_val, custom FROM pay_codes ORDER BY ord, rowid').all()); });
 function cleanPc(b, old) {
@@ -415,11 +433,33 @@ const SH_UNITS = ['Day', 'Week', 'Month'];
 const shRow = (s) => {
   const t = s.timetable_id ? db.prepare('SELECT name FROM att_timetables WHERE id=?').get(s.timetable_id) : null, x = json(s.att_extra, { enable: false, tiers: [] });
   return { id: s.id, name: s.name, code: s.code, timetable_id: s.timetable_id, timetable: t?.name ?? (s.type === 'split' ? `${s.start}-${s.end}, ${s.seg2_start}-${s.seg2_end}` : `${s.start}-${s.end}`), unit: s.shift_unit || 'Week', cycle: s.shift_cycle || 1,
-    auto_shift: s.auto_shift ? 'Yes' : 'No', auto_shift_key: s.auto_shift, weekly_ot: x.enable ? 'Yes' : 'No', weekly_ot_key: x.enable ? 1 : 0, tiers: x.tiers ?? [], workdays: s.workdays, grace_min: s.grace_min, start: s.start, end: s.end, type: s.type };
+    auto_shift: s.auto_shift ? 'Yes' : 'No', auto_shift_key: s.auto_shift, weekly_ot: x.enable ? 'Yes' : 'No', weekly_ot_key: x.enable ? 1 : 0, tiers: x.tiers ?? [], workdays: s.workdays, pattern: json(s.pattern, null), grace_min: s.grace_min, start: s.start, end: s.end, type: s.type };
 };
+// A shift whose grid uses several timetables keeps one hidden child shift per timetable; shiftResolver picks the child for each day
+function syncShiftChildren(id) {
+  const s = db.prepare('SELECT * FROM shifts WHERE id=?').get(id), pat = json(s.pattern, null), ids = [...new Set((pat ?? []).flat().filter(Boolean))];
+  const have = new Map(db.prepare('SELECT id, timetable_id FROM shifts WHERE child_of=?').all(id).map(c => [c.timetable_id, c.id]));
+  for (const [t, cid] of have) if (ids.length < 2 || !ids.includes(t)) db.prepare('DELETE FROM shifts WHERE id=?').run(cid);
+  if (ids.length < 2) return;
+  for (const t of ids) {
+    let cid = have.get(t);
+    if (!cid) { const tt = db.prepare('SELECT * FROM att_timetables WHERE id=?').get(t); if (!tt) continue; cid = Number(db.prepare("INSERT INTO shifts(name, start, end, workdays, att_hidden, timetable_id, type, child_of) VALUES(?,?,?,?,1,?,?,?)").run(`${s.name} [${tt.name}]`.slice(0, 80), tt.in_time, tt.out_time, '0,1,2,3,4,5,6', t, 'fixed', id).lastInsertRowid); }
+    db.prepare('UPDATE shifts SET name=?, grace_min=?, code=?, att_extra=? WHERE id=?').run(`${s.name} [${(db.prepare('SELECT name FROM att_timetables WHERE id=?').get(t) ?? {}).name}]`.slice(0, 80), s.grace_min, s.code, s.att_extra, cid);
+    syncShiftFromTimetable(cid);
+  }
+}
 R.get('/att/shiftdefs', (_q, res) => { ensureTimetables(); res.json(db.prepare('SELECT * FROM shifts WHERE IFNULL(att_hidden,0)=0 ORDER BY id').all().map(shRow)); });
 function cleanShiftDef(b, old) {
   const name = txt(b.alias ?? b.name ?? old?.name, 60); if (!name) return { error: 'Shift name required' };
+  let pattern = null;
+  if (Array.isArray(b.pattern)) {
+    const w = (b.unit ?? old?.shift_unit ?? 'Week') === 'Week' ? 7 : (b.unit ?? old?.shift_unit) === 'Month' ? 31 : 1, n = Number(b.cycle ?? old?.shift_cycle ?? 1);
+    pattern = Array.from({ length: n }, (_, r) => Array.from({ length: w }, (_, c) => Number(b.pattern[r]?.[c]) || null));
+    const ids = [...new Set(pattern.flat().filter(Boolean))];
+    if (!ids.length) return { error: 'Pick a timetable and click the days it applies to' };
+    b = { ...b, timetable_id: ids[0] };
+    if ((b.unit ?? old?.shift_unit ?? 'Week') === 'Week') b.workdays = pattern[0].map((v, i) => v ? i : null).filter(v => v !== null).join(',') || '0';
+  }
   const tid = Number(b.timetable_id ?? old?.timetable_id); const t = tid ? db.prepare('SELECT * FROM att_timetables WHERE id=?').get(tid) : null;
   if (!t && !(old && old.type === 'split')) return { error: 'Choose a timetable' };
   const unit = b.unit ?? old?.shift_unit ?? 'Week'; if (!SH_UNITS.includes(unit)) return { error: 'Unit must be Day, Week or Month' };
@@ -429,25 +469,25 @@ function cleanShiftDef(b, old) {
   const ox = json(old?.att_extra, { enable: false, tiers: [] });
   const tiers = [1, 2, 3].map(i => ({ pay_code: String(b[`t${i}_pay_code`] ?? ox.tiers?.[i - 1]?.pay_code ?? ''), from: Number(b[`t${i}_hrs_from`] ?? ox.tiers?.[i - 1]?.from ?? 0), to: Number(b[`t${i}_hrs_to`] ?? ox.tiers?.[i - 1]?.to ?? 0) }));
   for (const x of tiers) if (!(x.from >= 0 && x.to >= 0) || (x.to && x.to <= x.from)) return { error: 'Weekly overtime hours: the end must be above the start' };
-  return { o: { name, code: txt(b.code ?? old?.code, 4), timetable_id: t?.id ?? old?.timetable_id ?? null, shift_unit: unit, shift_cycle: cycle, auto_shift: flag(b.auto_shift ?? old?.auto_shift), workdays, grace_min: Math.round(grace), att_extra: JSON.stringify({ enable: !!flag(b.enable_ot_rule ?? b.weekly_ot_key ?? ox.enable), tiers }) } };
+  return { o: { name, code: txt(b.code ?? old?.code, 4), timetable_id: t?.id ?? old?.timetable_id ?? null, shift_unit: unit, shift_cycle: cycle, pattern: pattern ? JSON.stringify(pattern) : old?.pattern ?? null, auto_shift: flag(b.auto_shift ?? old?.auto_shift), workdays, grace_min: Math.round(grace), att_extra: JSON.stringify({ enable: !!flag(b.enable_ot_rule ?? b.weekly_ot_key ?? ox.enable), tiers }) } };
 }
 R.post('/att/shiftdefs', (req, res) => {
   const { o, error } = cleanShiftDef(req.body ?? {}, null); if (error) return fail(res, error);
   const t = db.prepare('SELECT * FROM att_timetables WHERE id=?').get(o.timetable_id), cols = [...Object.keys(o), 'start', 'end', 'type'], vals = [...Object.values(o), t.in_time, t.out_time, t.type === 'flexible' ? 'flexible' : 'fixed'];
-  const id = tx(() => { const i = Number(db.prepare(`INSERT INTO shifts(${cols}) VALUES(${cols.map(() => '?')})`).run(...vals).lastInsertRowid); syncShiftFromTimetable(i); return i; });
+  const id = tx(() => { const i = Number(db.prepare(`INSERT INTO shifts(${cols}) VALUES(${cols.map(() => '?')})`).run(...vals).lastInsertRowid); syncShiftFromTimetable(i); syncShiftChildren(i); return i; });
   res.json({ id });
 });
 R.put('/att/shiftdefs/:id', (req, res) => {
   const old = db.prepare('SELECT * FROM shifts WHERE id=?').get(req.params.id); if (!old) return fail(res, 'No such shift', 404);
   const { o, error } = cleanShiftDef(req.body ?? {}, old); if (error) return fail(res, error);
-  const cols = Object.keys(o); tx(() => { db.prepare(`UPDATE shifts SET ${cols.map(c => c + '=?')} WHERE id=?`).run(...cols.map(c => o[c]), old.id); syncShiftFromTimetable(old.id); });
+  const cols = Object.keys(o); tx(() => { db.prepare(`UPDATE shifts SET ${cols.map(c => c + '=?')} WHERE id=?`).run(...cols.map(c => o[c]), old.id); syncShiftFromTimetable(old.id); syncShiftChildren(old.id); });
   res.json({ ok: true });
 });
 R.delete('/att/shiftdefs/:id', (req, res) => {
   const id = req.params.id;
   for (const [t, c, label] of [['employees', 'shift_id', 'employees'], ['schedules', 'shift_id', 'roster entries'], ['rotation_steps', 'shift_id', 'rotations'], ['departments', 'shift_id', 'departments'], ['employee_shifts', 'shift_id', 'employees (alternate shifts)'], ['shift_requests', 'shift_id', 'shift requests'], ['att_dept_sched', 'shift_id', 'department schedules'], ['att_group_sched', 'shift_id', 'group schedules']])
     if (db.prepare(`SELECT COUNT(*) n FROM ${t} WHERE ${c}=?`).get(id).n) return fail(res, `This shift is still used by ${label}`);
-  db.prepare('DELETE FROM shifts WHERE id=?').run(id); res.json({ ok: true });
+  db.prepare('DELETE FROM shifts WHERE child_of=?').run(id); db.prepare('DELETE FROM shifts WHERE id=?').run(id); res.json({ ok: true });
 });
 
 // ---------------------------------------------------------------- schedule assignment
@@ -579,9 +619,9 @@ R.get('/att/manuallog', (req, res) => {
   if (req.query.from) { w.push('r.date>=?'); a.push(req.query.from); }
   if (req.query.to) { w.push('r.date<=?'); a.push(req.query.to); }
   res.json(db.prepare(`SELECT r.*, ${EMPSEL} FROM attendance_requests r ${EMPJOIN.replace(/X\./g, 'r.')} WHERE 1=1${sc.sql} ${w.length ? 'AND ' + w.join(' AND ') : ''} ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.id DESC LIMIT 1000`).all(...sc.args, ...a).map(r => empShape({
-    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, has_photo: r.has_photo, kind: r.kind, status: r.status,
+    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, position: r.position ?? '', has_photo: r.has_photo, kind: r.kind, status: r.status,
     punch_time: r.kind === 'add_punch' ? `${r.date} ${r.time}:00` : `${r.date} ${r.status_text}`, punch_state: r.kind === 'add_punch' ? STATES[r.punch_state ?? 0] ?? String(r.punch_state) : '', punch_state_key: r.punch_state ?? 0, work_code: r.work_code ?? '',
-    reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status), decision_note: r.decision_note ?? '' })));
+    reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status), decided_by: r.decided_by ?? '', decided_at: r.decided_at ?? '', decision_note: r.decision_note ?? '', decision_note: r.decision_note ?? '' })));
 });
 function createManual(employeeId, b, actor) {
   const type = b.type ?? 'punch'; let date, time = null, status_text = null;
@@ -633,8 +673,8 @@ R.get('/att/leavelist', (req, res) => {
   if (req.query.from) { w.push('l.to_date>=?'); a.push(req.query.from); }
   if (req.query.to) { w.push('l.from_date<=?'); a.push(req.query.to); }
   res.json(db.prepare(`SELECT l.*, ${EMPSEL} FROM leaves l ${EMPJOIN.replace(/X\./g, 'l.')} WHERE 1=1${sc.sql} ${w.length ? 'AND ' + w.join(' AND ') : ''} ORDER BY CASE l.status WHEN 'pending' THEN 0 ELSE 1 END, l.from_date DESC, l.id DESC LIMIT 1000`).all(...sc.args, ...a).map(r => empShape({
-    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, has_photo: r.has_photo, status: r.status, start_time: r.from_date + (r.half ? ' (half day)' : ''), end_time: r.to_date, days: r.days, reason: r.note ?? '', apply_time: r.applied_at ?? '', pay_code: r.type,
-    approval_status: statusLabel(r.status), decision_note: r.decision_note ?? '' })));
+    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, position: r.position ?? '', has_photo: r.has_photo, status: r.status, start_time: r.from_date + (r.half ? ' (half day)' : ''), end_time: r.to_date, days: r.days, reason: r.note ?? '', apply_time: r.applied_at ?? '', pay_code: r.type,
+    approval_status: statusLabel(r.status), decided_by: r.decided_by ?? '', decided_at: r.decided_at ?? '', decision_note: r.decision_note ?? '', decision_note: r.decision_note ?? '' })));
 });
 const leaveBody = (employeeId, b) => ({ employee_id: employeeId, from_date: String(b.start_time ?? b.from_date ?? '').slice(0, 10), to_date: String(b.end_time ?? b.to_date ?? b.start_time ?? '').slice(0, 10), type: b.pay_code ?? b.type, half: !!flag(b.half), note: txt(b.reason, 200), auto_approve: !!flag(b.auto_approve) });
 R.post('/att/leavelist/bulk', (req, res) => {
@@ -660,9 +700,9 @@ R.get('/att/otlist', (req, res) => {
   syncOvertimeRequests(from, to);
   const sc = scopeClause('e'), w = ['q.date BETWEEN ? AND ?'], a = [from, to]; if (req.query.status) { w.push('q.status=?'); a.push(req.query.status); }
   res.json(db.prepare(`SELECT q.*, ${EMPSEL} FROM overtime_requests q ${EMPJOIN.replace(/X\./g, 'q.')} WHERE ${w.join(' AND ')}${sc.sql} ORDER BY CASE q.status WHEN 'pending' THEN 0 ELSE 1 END, q.date DESC, e.code LIMIT 1000`).all(...a, ...sc.args).map(r => empShape({
-    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, has_photo: r.has_photo, kind: r.kind, status: r.status, pay_code: r.pay_code ?? dayTypeCode[r.day_type] ?? 'Normal OT',
+    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, position: r.position ?? '', has_photo: r.has_photo, kind: r.kind, status: r.status, pay_code: r.pay_code ?? dayTypeCode[r.day_type] ?? 'Normal OT',
     start_time: r.start_time ?? r.date, end_time: r.end_time ?? `${r.date} (${r.status === 'pending' ? r.calc_minutes : r.minutes} min)`, minutes: r.minutes, calc_minutes: r.calc_minutes, reason: r.note ?? (r.kind === 'auto' ? 'Calculated from punches' : ''),
-    apply_time: r.created, approval_status: statusLabel(r.status) })));
+    apply_time: r.created, approval_status: statusLabel(r.status), decided_by: r.decided_by ?? '', decided_at: r.decided_at ?? '', decision_note: r.decision_note ?? '' })));
 });
 function createOt(employeeId, b, actor) {
   const e = db.prepare('SELECT id, active FROM employees WHERE id=?').get(employeeId); if (!e) return { error: 'Choose an employee' };
@@ -702,7 +742,7 @@ const trSel = `SELECT t.*, ${EMPSEL} FROM att_training t ${EMPJOIN.replace(/X\./
 R.get('/att/training', (req, res) => {
   const sc = scopeClause('e'), w = [], a = []; if (req.query.status) { w.push('t.status=?'); a.push(req.query.status); }
   res.json(db.prepare(`${trSel} WHERE 1=1${sc.sql} ${w.length ? 'AND ' + w.join(' AND ') : ''} ORDER BY CASE t.status WHEN 'pending' THEN 0 ELSE 1 END, t.id DESC LIMIT 1000`).all(...sc.args, ...a).map(r => empShape({
-    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, has_photo: r.has_photo, status: r.status, pay_code: r.pay_code ?? 'Training', start_time: r.start_time, end_time: r.end_time, reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status) })));
+    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, position: r.position ?? '', has_photo: r.has_photo, status: r.status, pay_code: r.pay_code ?? 'Training', start_time: r.start_time, end_time: r.end_time, reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status), decided_by: r.decided_by ?? '', decided_at: r.decided_at ?? '', decision_note: r.decision_note ?? '' })));
 });
 function applyTraining(t) { for (const d of dayRange(t.start_time.slice(0, 10), t.end_time.slice(0, 10))) db.prepare('INSERT INTO day_overrides(employee_id, date, status, note) VALUES(?,?,?,?) ON CONFLICT(employee_id, date) DO UPDATE SET status=excluded.status, note=excluded.note').run(t.employee_id, d, 'Training', `Training #${t.id}`); }
 const undoTraining = (t) => db.prepare('DELETE FROM day_overrides WHERE employee_id=? AND note=?').run(t.employee_id, `Training #${t.id}`);
@@ -755,8 +795,8 @@ R.post('/att/training/import', (req, res) => { // emp_code,start,end,pay code,re
 R.get('/att/schedadj', (_q, res) => {
   const sc = scopeClause('e');
   res.json(db.prepare(`SELECT r.*, s.name AS shift, o.name AS other, ${EMPSEL} FROM shift_requests r ${EMPJOIN.replace(/X\./g, 'r.')} LEFT JOIN shifts s ON s.id=r.shift_id LEFT JOIN employees o ON o.id=r.other_employee_id WHERE 1=1${sc.sql} ORDER BY CASE r.status WHEN 'pending' THEN 0 ELSE 1 END, r.id DESC LIMIT 1000`).all(...sc.args).map(r => empShape({
-    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, has_photo: r.has_photo, status: r.status, date: r.from_date + (r.to_date !== r.from_date ? ` - ${r.to_date}` : ''), previous: r.prev_shift ?? '',
-    new_schedule: r.kind === 'swap' ? `Swap with ${r.other}` : r.shift ?? '', reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status), decision_note: r.decision_note ?? '' })));
+    id: r.id, employee_id: r.employee_id, code: r.code, name: r.name, dept: r.dept, position: r.position ?? '', has_photo: r.has_photo, status: r.status, date: r.from_date + (r.to_date !== r.from_date ? ` - ${r.to_date}` : ''), previous: r.prev_shift ?? '',
+    new_schedule: r.kind === 'swap' ? `Swap with ${r.other}` : r.shift ?? '', reason: r.reason ?? '', apply_time: r.created, approval_status: statusLabel(r.status), decided_by: r.decided_by ?? '', decided_at: r.decided_at ?? '', decision_note: r.decision_note ?? '', decision_note: r.decision_note ?? '' })));
 });
 R.post('/att/schedadj', (req, res) => {
   const b = req.body ?? {}, date = String(b.date ?? b.att_date ?? '').slice(0, 10), emp = db.prepare('SELECT * FROM employees WHERE id=?').get(b.employee_id);

@@ -60,7 +60,16 @@ export function shiftResolver(from, to) {
   const ranged = (t, key) => { const m = new Map(); try { for (const r of db.prepare(`SELECT * FROM ${t} WHERE end_date>=? AND start_date<=? ORDER BY id`).all(from, to)) { if (!m.has(r[key])) m.set(r[key], []); m.get(r[key]).push(r); } } catch { /* no table */ } return m; };
   const grpSched = ranged('att_group_sched', 'group_id'), deptSched = ranged('att_dept_sched', 'department_id');
   const inRange = (list, day) => (list ?? []).findLast(x => x.start_date <= day && day <= x.end_date);
-  return (e, day, firstPunchTod = null) => {
+  const kids = new Map(); for (const s of shifts.values()) if (s.child_of) { if (!kids.has(s.child_of)) kids.set(s.child_of, new Map()); kids.get(s.child_of).set(s.timetable_id, s); }
+  const pats = new Map(); for (const s of shifts.values()) if (kids.has(s.id)) { try { pats.set(s.id, JSON.parse(s.pattern)); } catch { /* ignore */ } }
+  // a grid shift with several timetables: the cell of this day (Week: Sun..Sat by week of cycle; Month: day of month; Day: day of cycle) picks the child shift, an empty cell is a day off
+  const cell = (sh, day) => {
+    const pat = pats.get(sh.id); if (!pat) return undefined;
+    const t = new Date(dayMin(day) * 60000), days = Math.floor(dayMin(day) / 1440), n = pat.length, u = sh.shift_unit || 'Week';
+    const [r, c] = u === 'Week' ? [Math.floor((days + 4) / 7) % n, t.getUTCDay()] : u === 'Month' ? [(t.getUTCFullYear() * 12 + t.getUTCMonth()) % n, t.getUTCDate() - 1] : [days % n, 0];
+    const tid = pat[r]?.[c]; return tid ? { sh: kids.get(sh.id).get(tid) ?? null, off: false, fromRotation: true, source: 'grid' } : { sh: null, off: true, fromRotation: true, source: 'grid' };
+  };
+  const base = (e, day, firstPunchTod) => {
     const sch = (roster.get(e.id) ?? []).find(x => x.from_date <= day && day <= x.to_date);
     if (sch) return { sh: shifts.get(sch.shift_id) ?? null, off: false, fromRotation: false, source: 'roster' };
     const R = e.rotation_id && e.rotation_anchor ? rot.get(e.rotation_id) : null;
@@ -81,6 +90,7 @@ export function shiftResolver(from, to) {
     const ds = e.department_id ? shifts.get(deptShift.get(e.department_id)) : null;
     return { sh: ds ?? null, off: false, fromRotation: false, source: ds ? 'department' : 'none' };
   };
+  return (e, day, firstPunchTod = null) => { const r = base(e, day, firstPunchTod); return (r.sh && cell(r.sh, day)) || r; };
 }
 
 // Put `shiftId` on the roster for an employee for [from, to], cutting any older roster entries that overlap.

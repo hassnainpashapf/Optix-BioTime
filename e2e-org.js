@@ -5,6 +5,7 @@ import { startServer } from './e2e-lib.js';
 const S = await startServer(), api = S.api;
 try {
   // ---- departments
+  for (const d of await api('org/departments')) await api('org/departments/' + d.id, 'DELETE'); // the default top-level department is not needed here
   const hq = (await api('org/departments', 'POST', { code: '1', name: 'Head office' })).id, ops = (await api('org/departments', 'POST', { code: '10', name: 'Operations', parent_id: hq })).id, hr = (await api('org/departments', 'POST', { code: '11', name: 'HR', parent_id: hq })).id;
   await assert.rejects(api('org/departments', 'POST', { code: '10', name: 'Dup code' }), /already used/); await assert.rejects(api('org/departments', 'POST', { name: '' }), /Name required/); await assert.rejects(api('org/departments', 'POST', { name: 'Ops' + 'x', parent_id: 999 }), /Unknown superior/);
   await assert.rejects(api('org/departments/' + hq, 'PUT', { parent_id: ops }), /cannot sit under itself/); await assert.rejects(api('org/departments/' + hq, 'PUT', { parent_id: hq }), /cannot sit under itself/);
@@ -42,7 +43,10 @@ try {
   const co = (await api('companies', 'POST', { name: 'Acme' })).id, a1 = (await api('org/areas', 'POST', { code: 'LHE', name: 'Lahore HQ', company_id: co, address: 'Gulberg' })).id;
   await api('device_groups', 'POST', { name: 'Lahore devices', branch_id: a1 }); await api('employees/' + B.id, 'PUT', { branch_id: a1 });
   const ar = (await api('org/areas')).find(x => x.id === a1); assert.equal(ar.company, 'Acme'); assert.equal(ar.employees, 1); assert.equal(ar.device_groups, 1); assert.equal(ar.address, 'Gulberg');
-  await assert.rejects(api('org/areas/' + a1, 'DELETE'), /still used by 1 employee/); await api('employees/' + B.id, 'PUT', { branch_id: null }); await assert.rejects(api('org/areas/' + a1, 'DELETE'), /device groups/);
+  await assert.rejects(api('org/areas/' + a1, 'DELETE'), /still used by 1 employee/); await api('employees/' + B.id, 'PUT', { branch_id: null }); const gid = (await api('device_groups')).find(x => x.branch_id === a1).id, dv = await api('devices', 'POST', { name: 'Lhr door', ip: '10.9.9.9', group_id: gid });
+  await assert.rejects(api('org/areas/' + a1, 'DELETE'), /still has a device \(Lhr door\)/); await api('devices/' + dv.id, 'DELETE');
+  const tmp = (await api('org/areas', 'POST', { name: 'Temp area' })).id; await api('device_groups', 'POST', { name: 'Temp group', branch_id: tmp }); await api('org/areas/' + tmp, 'DELETE'); // an empty device group goes with its area
+  assert.ok(!(await api('device_groups')).some(x => x.name === 'Temp group'));
   await api('org/areas/' + a1, 'PUT', { name: 'Lahore main office' }); assert.equal((await api('org/areas')).find(x => x.id === a1).name, 'Lahore main office');
   // permissions: needs the organization module
   await api('users', 'POST', { username: 'viewer5', password: 'password1', role: 'viewer' }); const vt = await S.login('viewer5', 'password1');

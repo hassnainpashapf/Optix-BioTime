@@ -14,6 +14,7 @@ for (const [c, d] of [['ip', 'TEXT'], ['status', 'TEXT'], ['action', 'TEXT'], ['
 db.exec(`CREATE TABLE IF NOT EXISTS zk_users(user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE, first_name TEXT, last_name TEXT, email TEXT, enabled INTEGER NOT NULL DEFAULT 1, twofa INTEGER NOT NULL DEFAULT 0, twofa_secret TEXT,
   date_joined TEXT, last_login TEXT, login_count INTEGER NOT NULL DEFAULT 0, pwd_changed TEXT);`);
 db.exec(`CREATE TRIGGER IF NOT EXISTS zk_users_cleanup AFTER DELETE ON users BEGIN DELETE FROM zk_users WHERE user_id=OLD.id; END;`);
+addCol('zk_apireq', 'host', 'TEXT'); addCol('zk_apireq', 'error', 'TEXT');
 addCol('notifications', 'read_time', 'TEXT'); // the Notification page shows when each one was read
 db.exec(`CREATE TRIGGER IF NOT EXISTS zk_notif_read AFTER UPDATE OF is_read ON notifications WHEN NEW.is_read=1 AND OLD.is_read=0 BEGIN UPDATE notifications SET read_time=datetime('now','localtime') WHERE id=NEW.id; END;`);
 const now = () => new Date().toLocaleString('sv');
@@ -24,7 +25,8 @@ export const waLog = ({ phone, text, status, reason = '', emp_code = null }) => 
 export const adminLog = (user, ip, action, ctype, object, status = 'Success', desc = '') => { try { db.prepare('INSERT INTO audit_log(user, method, path, summary, ip, status, action, ctype, object) VALUES(?,?,?,?,?,?,?,?,?)').run(user, 'EVENT', '', desc, ip, status, action, ctype, object); } catch {} };
 // Express middleware for the external API (/api/v1): one row per request.
 export const apiLog = (req, res, next) => {
-  const t0 = Date.now(); res.on('finish', () => { try { db.prepare('INSERT INTO zk_apireq(user, path, method, ip, status, ms) VALUES(?,?,?,?,?,?)').run(req.apiKey?.name ?? null, req.originalUrl.split('?')[0].slice(0, 300), req.method, req.ip, res.statusCode, Date.now() - t0); } catch {} });
+  const t0 = Date.now(); let err = null; const j = res.json.bind(res); res.json = (b) => { if (b && typeof b === 'object' && typeof b.error === 'string') err = b.error; return j(b); }; // what went wrong, for the Errors column
+  res.on('finish', () => { try { db.prepare('INSERT INTO zk_apireq(user, path, method, ip, status, ms, host, error) VALUES(?,?,?,?,?,?,?,?)').run(req.apiKey?.name ?? null, req.originalUrl.split('?')[0].slice(0, 300), req.method, req.ip, res.statusCode, Date.now() - t0, String(req.headers.host ?? '').slice(0, 120), err ? String(err).slice(0, 300) : null); } catch {} });
   next();
 };
 
