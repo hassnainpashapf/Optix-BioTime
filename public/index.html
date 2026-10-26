@@ -427,7 +427,7 @@ html[data-theme=dark] .zb{color:var(--text)!important;background:transparent!imp
 html[data-skin=classic]{--g:#4f8a1e;--gd:#3d6e14;--slate:#3b3f50;--slate2:#2d3040;--bg:#f4f6f8;--line:#e4e7ea;--stroke:#d9dde1;--text:#1f2329;--mut:#69717a;--brand:#4f8a1e;--brand-d:#3d6e14;--brand-soft:#eef6e2;--link:#1b8fcb;--card:#fff;--surface2:#f5f6f7;--hover:#f3f5f7;--r:2px;--sh:0 1px 3px rgba(0,0,0,.14);--ink:#333;--ok:#3d9a1c;--series-1:#4f8a1e;--ink2:#2b3036}
 html[data-skin=classic] body{font:14px/1.45 "Helvetica Neue",Helvetica,Arial,"PingFang SC","Microsoft YaHei",sans-serif;background:#fff;color:#333}
 html[data-skin=classic] #themebtn,html[data-skin=classic] #railbtn,html[data-skin=classic] #crumb,html[data-skin=classic] #sidefoot{display:none!important}
-html[data-skin=classic] #app{display:grid!important;grid-template-columns:200px minmax(0,1fr);grid-template-rows:64px auto auto minmax(0,1fr);height:100vh;background:#fff}
+html[data-skin=classic] #app.on{display:grid!important;grid-template-columns:200px minmax(0,1fr);grid-template-rows:64px auto auto minmax(0,1fr);height:100vh;background:#fff}
 html[data-skin=classic] #work{display:contents}
 html[data-skin=classic] #top{grid-column:1/-1;grid-row:1;height:64px;background:var(--g);border:0;color:#fff;padding:0 18px 0 0;gap:0;backdrop-filter:none;box-shadow:none}
 html[data-skin=classic] #hlogo{display:flex;align-items:center;gap:9px;width:200px;flex:none;padding:0 18px;color:#fff;font-size:21px;font-weight:800;letter-spacing:-.02em;cursor:pointer}
@@ -744,7 +744,7 @@ async function api(path,method='GET',body){
   const j=await r.json().catch(()=>({}));if(r.status===401&&path!=='login'){logout();throw Error('Login required')}
   if(!r.ok)throw Error(j.error||r.statusText);return j}
 async function login(){try{const j=await api('login','POST',{username:$('#u').value,password:$('#p').value});T=j.token;sessionStorage.t=T;boot()}catch(e){$('#le').textContent=e.message;$('#le').style.display='block'}}
-function logout(){T='';sessionStorage.removeItem('t');$('#app').style.display='none';$('#login').style.display='flex'}
+function logout(){T='';sessionStorage.removeItem('t');$('#app').classList.remove('on');$('#app').style.display='none';$('#login').style.display='flex'}
 const today=()=>new Date().toLocaleDateString('en-CA'),mstart=()=>today().slice(0,8)+'01';
 const hm=m=>m?`${Math.floor(m/60)}h ${m%60}m`:'-';const money=n=>Number(n||0).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});
 const TB={};let tbn=0;
@@ -2056,7 +2056,7 @@ function drawFrame(p){const me=window.ME;if(!me)return;const app=$('#app'),mod=w
   $('#menu').innerHTML=home+(mod||q?(q?visMods():[mod]):visMods()).map(block).join('');
   $('#tabs').innerHTML=TABS.map(t=>`<div class="tab ${t===p?'on':''}" onclick="window.empId=null;go('${t}')">${esc(tabName(t))}${t==='Dashboard'?'':`<span class="x" onclick="closeTab('${t}',event)">&times;</span>`}</div>`).join('')}
 function menuSearch(){drawFrame(cur)}
-async function boot(){$('#login').style.display='none';window.scrollTo(0,0);$('#app').style.display='flex';
+async function boot(){$('#login').style.display='none';window.scrollTo(0,0);$('#app').classList.add('on');$('#app').style.display='flex';
   let me;try{me=await api('me')}catch{return}window.ME=me;window.TABS=['Dashboard'];window.MOD=null;window.curItem=null;window.OPEN={};
   $('#uav').textContent=(me.user||'A')[0].toUpperCase();$('#suav').textContent=(me.user||'A')[0].toUpperCase();$('#sun').textContent=me.user;$('#sur').textContent=me.role==='admin'?'Administrator':me.role.charAt(0).toUpperCase()+me.role.slice(1);
   const canEdit=me.role==='admin'||Object.values(me.perms).some(v=>v==='edit'||String(v).startsWith('view+')),note=[];if(!canEdit)note.push('Read-only');if(me.scoped)note.push('Part of the company');
