@@ -6,13 +6,13 @@ Unicode true
 !ifndef VERSION
   !define VERSION "1.0.0"
 !endif
-Name "Optix Attendance Server ${VERSION}"
+Name "OKT Attendance Server ${VERSION}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\Optix"
 InstallDirRegKey HKLM "Software\Optix" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-BrandingText "Optix"
+BrandingText "OKT"
 !define MUI_ABORTWARNING
 
 Var HttpPort
@@ -27,7 +27,7 @@ Var DlgHttpsOn
 Page custom PortsPage PortsLeave
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_TEXT "Open Optix in the browser"
+!define MUI_FINISHPAGE_RUN_TEXT "Open OKT in the browser"
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenBrowser
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -115,13 +115,13 @@ Section "Optix" SecMain
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install-task.ps1" -InstallDir "$INSTDIR"'
   ; shortcuts
   CreateDirectory "$SMPROGRAMS\Optix"
-  WriteINIStr "$SMPROGRAMS\Optix\Open Optix.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
+  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
   CreateShortcut "$SMPROGRAMS\Optix\Uninstall Optix.lnk" "$INSTDIR\Uninstall.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Optix" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "DisplayName" "Optix Attendance Server"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "DisplayName" "OKT Attendance Server"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "Publisher" "Optix"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "Publisher" "OKT"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "NoModify" 1
 SectionEnd

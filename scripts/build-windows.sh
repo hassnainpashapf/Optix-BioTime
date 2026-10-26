@@ -17,5 +17,5 @@ CACHE=${CACHE:-$HOME/.cache/optix-build}; mkdir -p "$CACHE"; ZIP="$CACHE/node-$N
 unzip -o -j "$ZIP" "node-$NODEVER-win-x64/node.exe" -d "$STAGE" >/dev/null
 cp scripts/windows/install-task.ps1 scripts/windows/remove-task.ps1 "$STAGE/"
 cp scripts/windows/installer.nsi build/win/installer.nsi
-( cd build/win && makensis -V2 -DVERSION="$VER" -DOUTFILE="$PWD/../../$OUT/Optix-Setup-$VER.exe" installer.nsi )
-ls -la "$OUT/Optix-Setup-$VER.exe"
+( cd build/win && makensis -V2 -DVERSION="$VER" -DOUTFILE="$PWD/../../$OUT/OKT-Setup-$VER.exe" installer.nsi )
+ls -la "$OUT/OKT-Setup-$VER.exe"
