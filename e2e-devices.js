@@ -91,7 +91,7 @@ try {
   const rb3 = await api(`devices/${gate}/reboot`, 'POST'); await api(`devices/commands/${rb3.command}/cancel`, 'POST'); await sim.poll(); assert.equal(sim.rebooted, 2, 'a cancelled command is never delivered');
   await assert.rejects(api(`devices/commands/${rb3.command}/cancel`, 'POST'), /not been fetched/);
   assert.ok((await api(`devices/${gate}/commands/clear`, 'POST')).cleared >= 3);
-  await assert.rejects(api(`devices/${pull}/reboot`, 'POST'), /push devices only/); await assert.rejects(api(`devices/${pull}/time-sync`, 'POST'), /not supported for pull/);
+  await assert.rejects(api(`devices/${pull}/reboot`, 'POST'), /push devices only/); await assert.rejects(api(`devices/${pull}/time-sync`, 'POST'), /Could not set the clock/);
   sim.punches = [{ pin: A.code, ts: '2026-03-02 09:00:00' }, { pin: A.code, ts: '2026-03-02 18:00:00' }, { pin: B.code, ts: '2026-04-10 09:05:00' }];
   await assert.rejects(api(`devices/${gate}/request-logs`, 'POST', { from: '2026-03-02' }), /from and to/);
   await api(`devices/${gate}/request-logs`, 'POST', { from: '2026-03-01', to: '2026-03-31' }); await sim.poll();

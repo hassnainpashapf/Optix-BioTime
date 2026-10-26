@@ -2,7 +2,7 @@ import express from 'express';
 import { appendFileSync, mkdirSync, statSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { db, getSettings } from './db.js';
-import { saveLogs } from './zk.js';
+import { saveLogs, adoptArea } from './zk.js';
 import { logEvent, ipAllowed } from './devsync.js';
 import { encrypt, decrypt } from './bio.js';
 import { notify } from './notify.js';
@@ -90,11 +90,11 @@ admsRouter.post('/cdata', (req, res) => {
       if (f[0] && /^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$/.test(f[1] ?? '')) {
         // some face-and-temperature models append "mask flag, temperature" after the usual columns (kept only when they look right)
         const t = f.length >= 9 ? Number(f[8]) : NaN;
-        rows.push({ code: f[0], ts: f[1], temp_c: t >= 30 && t <= 45 ? t : null, mask: f.length >= 8 && ['0', '1'].includes(f[7]) ? Number(f[7]) : null });
+        rows.push({ code: f[0], ts: f[1], state: /^\d{1,2}$/.test(f[2] ?? '') && Number(f[2]) <= 15 ? Number(f[2]) : null, verify: /^\d{1,3}$/.test(f[3] ?? '') ? Number(f[3]) : null, workcode: f[4] && f[4] !== '0' ? String(f[4]).slice(0, 20) : null, temp_c: t >= 30 && t <= 45 ? t : null, mask: f.length >= 8 && ['0', '1'].includes(f[7]) ? Number(f[7]) : null });
       }
     }
     saveLogs(rows, d.id);
-    const hot = getSettings().temp_alert_c;
+    const hot = getSettings().mtd_temp_alarm === 0 ? 0 : getSettings().temp_alert_c;
     if (hot > 0) for (const r of rows.filter(r => r.temp_c !== null && r.temp_c >= hot).slice(0, 5)) {
       logEvent(d.id, 'high_temperature', `${r.code}: ${r.temp_c} °C at ${r.ts}`);
       notify({ title: `High temperature: ${r.code} ${r.temp_c} °C`, body: `${d.name}, ${r.ts}`, link: 'Devices' , kind: 'high_temp'});
@@ -124,6 +124,7 @@ admsRouter.post('/cdata', (req, res) => {
       }
     }
   }
+  adoptArea(d.id);
   db.prepare('UPDATE devices SET last_sync=?, last_status=? WHERE id=?').run(now(), `Push: ${table || 'data'} ${count} records`, d.id);
   recordUpload(d.id, table || 'DATA', `${table || 'data'}: ${lines.length} line(s) received`, count, Math.max(0, lines.length - count));
   if (table === 'OPERLOG') for (const l of lines.filter(l => !/^(FP|FACE|BIODATA|FINGERTMP) /i.test(l)).slice(0, 50)) recordOp(d.id, 'Device', l.split(/[ \t]/)[0], (parseKv(l, l.indexOf(' ') + 1).pin ?? ''), l.replace(/(TMP|Template)=\S+/gi, '$1=[hidden]').slice(0, 200)); // biometric templates never go into a log
@@ -131,6 +132,26 @@ admsRouter.post('/cdata', (req, res) => {
 });
 
 // Device polls for commands: hand over everything queued for it ("C:<id>:<command>" per line).
+// Punch photo: the device sends the picture it took at a punch. Firmware differs in the wrapper (query string or a few text lines before the JPEG), so both are read.
+admsRouter.post('/fdata', (req, res) => {
+  const d = device(req.query.SN, req);
+  if (!d) return res.status(req.blocked ? 403 : 400).send(req.blocked ? 'ERROR: not allowed' : 'ERROR: SN required');
+  if (!d.approved) return text(res, 'OK');
+  const table = String(req.query.table || '').toUpperCase();
+  if (table && table !== 'ATTPHOTO' && table !== 'BIOPHOTO') return text(res, 'OK'); // other uploads (templates, user photos) are not kept here
+  const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(String(req.body ?? ''), 'latin1');
+  const at = buf.indexOf(Buffer.from([0xff, 0xd8, 0xff]));
+  if (at < 0) return text(res, 'OK');
+  const head = buf.subarray(0, at).toString('latin1'), jpeg = buf.subarray(at);
+  const pin = (head.match(/PIN=([^\r\n&]+)/) || [])[1] || String(req.query.PIN || '');
+  const m = pin.match(/^(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)-(.+?)(?:\.jpe?g)?$/i);
+  const code = m ? m[7] : pin.replace(/\.jpe?g$/i, ''), ts = m ? `${m[1]}-${m[2]}-${m[3]} ${m[4]}:${m[5]}:${m[6]}` : now();
+  if (!code || jpeg.length < 100 || jpeg.length > 6e6) return text(res, 'OK');
+  db.prepare('INSERT OR REPLACE INTO punch_photos(device_id, emp_code, ts, data) VALUES(?,?,?,?)').run(d.id, code.slice(0, 40), ts, jpeg);
+  const keep = Number(getSettings().photo_keep_days) || 0;
+  if (keep > 0 && Math.random() < 0.02) db.prepare("DELETE FROM punch_photos WHERE ts < datetime('now','localtime',?)").run(`-${keep} days`);
+  text(res, 'OK');
+});
 admsRouter.get('/getrequest', (req, res) => {
   const d = device(req.query.SN, req);
   if (req.blocked) return res.status(403).send('ERROR: not allowed');

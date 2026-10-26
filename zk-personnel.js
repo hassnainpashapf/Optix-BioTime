@@ -1,5 +1,5 @@
 import express from 'express';
-import { db } from './db.js';
+import { db, hash } from './db.js';
 import { parseCsv } from './csv.js';
 import { dateStr } from './dates.js';
 import { emit } from './events.js';
@@ -15,7 +15,15 @@ const txt = (v, n) => { const s = String(v ?? '').trim().slice(0, n); return s |
 const addCol = (t, c, d) => { if (!db.prepare(`PRAGMA table_info(${t})`).all().some(r => r.name === c)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${d}`); };
 addCol('employees', 'nationality', 'TEXT');
 addCol('employees', 'emp_type', 'TEXT');
+// the rest of BioTime's Employee form (Private Information, Device Access, Attendance, App and Payroll settings)
+const XF = { last_name: ['t', 60, 'TEXT'], local_name: ['t', 80, 'TEXT'], office_tel: ['t', 30, 'TEXT'], mobile: ['t', 30, 'TEXT'], city: ['t', 60, 'TEXT'], postcode: ['t', 20, 'TEXT'], workflow_role: ['t', 60, 'TEXT'],
+  pin: ['p', 8, 'TEXT'], verify_mode: ['i', [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15], 'INTEGER DEFAULT 0'], device_priv: ['i', [0, 2, 6, 14], 'INTEGER DEFAULT 0'],
+  enable_att: ['b', 0, 'INTEGER DEFAULT 1'], enable_schedule: ['b', 0, 'INTEGER DEFAULT 1'], enable_holiday: ['b', 0, 'INTEGER DEFAULT 1'], enable_ot: ['b', 0, 'INTEGER DEFAULT 1'], enable_comp: ['b', 0, 'INTEGER DEFAULT 0'],
+  app_status: ['b', 0, 'INTEGER DEFAULT 0'], app_role: ['t', 20, "TEXT DEFAULT 'Employee'"], pay_period: ['t', 20, "TEXT DEFAULT 'Monthly'"], pay_type: ['t', 20, "TEXT DEFAULT 'Cash'"], agent_id: ['t', 40, 'TEXT'], agent_account: ['t', 60, 'TEXT'] };
+for (const [k, v] of Object.entries(XF)) addCol('employees', k, v[2]);
 addCol('departments', 'manager_id', 'INTEGER');
+try { if (!db.prepare('SELECT 1 FROM departments').get()) db.prepare("INSERT INTO departments(name, code) VALUES('Department','1')").run(); } catch {} // BioTime starts with one top-level department that new employees can be placed in
+try { db.exec("UPDATE employees SET department_id=(SELECT id FROM departments WHERE code='1' ORDER BY id LIMIT 1) WHERE department_id IS NULL AND EXISTS(SELECT 1 FROM departments WHERE code='1')"); } catch {} // every employee belongs to a department, as in BioTime
 addCol('branches', 'parent_id', 'INTEGER');
 db.exec('CREATE TRIGGER IF NOT EXISTS zk_area_del AFTER DELETE ON branches BEGIN UPDATE branches SET parent_id=NULL WHERE parent_id=OLD.id; END');
 db.exec('CREATE TABLE IF NOT EXISTS zk_resign(employee_id INTEGER PRIMARY KEY REFERENCES employees(id) ON DELETE CASCADE, type TEXT, reason TEXT, date TEXT, att_disabled INTEGER DEFAULT 0)');
@@ -28,10 +36,10 @@ const qty = (col) => `(SELECT COUNT(*) FROM employees e WHERE e.${col}=x.id AND 
 const mine = (id) => { const c = scopeClause('e'); return db.prepare(`SELECT e.* FROM employees e WHERE e.id=?${c.sql}`).get(id, ...c.args); };
 
 // ---------- employee list (ZKT columns) ----------
-const EMP_SQL = `SELECT e.id, e.code, e.name, e.nationality, e.emp_type, e.join_date, e.active, e.status, e.card_no, e.photo IS NOT NULL AS has_photo,
-  d.name AS dept, ds.name AS position, b.name AS area,
+const EMP_SQL = `SELECT e.id, e.code, e.name, e.nationality, e.emp_type, e.join_date, e.active, e.status, e.card_no, e.photo IS NOT NULL AS has_photo, e.last_name, e.local_name, e.gender, e.email, mg.name AS superior, e.updated AS update_time,
+  d.name AS dept, d.code AS dept_code, ds.name AS position, b.name AS area, b.code AS area_code,
   CASE WHEN a.employee_id IS NOT NULL AND a.enabled=1 AND a.mobile_enabled=1 THEN 'Enable' ELSE 'Disable' END AS app_status
-  FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN designations ds ON ds.id=e.designation_id LEFT JOIN branches b ON b.id=e.branch_id
+  FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN designations ds ON ds.id=e.designation_id LEFT JOIN branches b ON b.id=e.branch_id LEFT JOIN employees mg ON mg.id=e.manager_id
   LEFT JOIN employee_accounts a ON a.employee_id=e.id`;
 zkpRouter.get('/zkp/employees', (req, res) => {
   const w = [], a = [], q = req.query, sc = scopeClause('e');
@@ -40,12 +48,37 @@ zkpRouter.get('/zkp/employees', (req, res) => {
   w.push(q.status === 'all' ? '1=1' : 'e.active=1');
   res.json(db.prepare(`${EMP_SQL} WHERE ${w.join(' AND ')}${sc.sql} ORDER BY CAST(e.code AS INTEGER), e.code LIMIT 5000`).all(...a, ...sc.args));
 });
+// Company on Department, Position and Group (BioTime's multi-company field)
+const CO_TABLES = new Set(['departments', 'designations', 'emp_groups']);
+for (const t of CO_TABLES) addCol(t, 'company_id', 'INTEGER');
+zkpRouter.get('/zkp/org/company/:table', (req, res) => { if (!CO_TABLES.has(req.params.table)) return fail(res, 'Unknown list', 404); res.json(db.prepare(`SELECT id, company_id FROM ${req.params.table}`).all()); });
+zkpRouter.put('/zkp/org/company/:table/:id', (req, res) => {
+  if (!CO_TABLES.has(req.params.table)) return fail(res, 'Unknown list', 404);
+  const c = req.body?.company_id ? Number(req.body.company_id) : null; if (c && !db.prepare('SELECT 1 FROM companies WHERE id=?').get(c)) return fail(res, 'Unknown company');
+  if (!Number(db.prepare(`UPDATE ${req.params.table} SET company_id=? WHERE id=?`).run(c, Number(req.params.id)).changes)) return fail(res, 'Not found', 404);
+  res.json({ ok: true });
+});
 zkpRouter.get('/zkp/employees/extra-options', (_q, res) => res.json({ emp_types: EMP_TYPES, resign_types: RESIGN_TYPES }));
-zkpRouter.get('/zkp/employees/:id/extra', (req, res) => { const e = mine(req.params.id); if (!e) return fail(res, 'No such employee', 404); res.json({ nationality: e.nationality, emp_type: e.emp_type }); });
+zkpRouter.get('/zkp/employees/:id/extra', (req, res) => { const e = mine(req.params.id); if (!e) return fail(res, 'No such employee', 404); res.json({ nationality: e.nationality, emp_type: e.emp_type, ...Object.fromEntries(Object.keys(XF).map(k => [k, k === 'pin' ? '' : e[k]])), has_pin: !!e.pin, has_account: !!db.prepare('SELECT 1 FROM employee_accounts WHERE employee_id=?').get(e.id), app_status: db.prepare('SELECT enabled FROM employee_accounts WHERE employee_id=?').get(e.id)?.enabled ?? 0 }); });
 zkpRouter.put('/zkp/employees/:id/extra', (req, res) => {
   const e = mine(req.params.id); if (!e) return fail(res, 'No such employee', 404);
-  const b = req.body ?? {}, nat = 'nationality' in b ? txt(b.nationality, 60) : e.nationality, et = 'emp_type' in b ? txt(b.emp_type, 40) : e.emp_type;
-  db.prepare('UPDATE employees SET nationality=?, emp_type=? WHERE id=?').run(nat, et, e.id); res.json({ ok: true });
+  const b = req.body ?? {}, set = {};
+  if ('nationality' in b) set.nationality = txt(b.nationality, 60); if ('emp_type' in b) set.emp_type = txt(b.emp_type, 40);
+  for (const [k, [t, lim]] of Object.entries(XF)) {
+    if (!(k in b)) continue;
+    if (t === 't') set[k] = txt(b[k], lim);
+    else if (t === 'b') set[k] = b[k] === true || b[k] === 1 || b[k] === '1' ? 1 : 0;
+    else if (t === 'i') { const n = Number(b[k]); if (!lim.includes(n)) return fail(res, k === 'device_priv' ? 'Device Privilege: Employee, Enroller, Administrator or Super Administrator' : 'Unknown verify mode'); set[k] = n; }
+    else if (t === 'p') { const v = String(b[k] ?? '').trim(); if (!/^\d{0,8}$/.test(v)) return fail(res, 'PIN: up to 8 digits'); set[k] = v || null; }
+  }
+  const acc = db.prepare('SELECT 1 FROM employee_accounts WHERE employee_id=?').get(e.id), pw = String(b.self_password ?? '');
+  if (pw && pw.length < 8) return fail(res, 'Self-Password needs at least 8 characters');
+  if (set.app_status === 1 && !acc && !pw) return fail(res, 'To enable the app, set a Self-Password first (at least 8 characters)');
+  if (pw) db.prepare('INSERT INTO employee_accounts(employee_id, pass, must_change, enabled) VALUES(?,?,1,?) ON CONFLICT(employee_id) DO UPDATE SET pass=excluded.pass, must_change=1, fails=0, locked_until=NULL').run(e.id, hash(pw), set.app_status === 0 ? 0 : 1);
+  if ('app_status' in set && (acc || pw)) db.prepare('UPDATE employee_accounts SET enabled=? WHERE employee_id=?').run(set.app_status, e.id);
+  const keys = Object.keys(set); if (keys.length) db.prepare(`UPDATE employees SET ${keys.map(k => k + '=?')} WHERE id=?`).run(...keys.map(k => set[k]), e.id);
+  if (['verify_mode', 'device_priv', 'pin'].some(k => k in set)) queueUser(e.code, e.name, e.active ? 'update' : 'delete'); // the device keeps these
+  res.json({ ok: true });
 });
 
 // ---------- bulk personnel transfer (department / position / area) ----------

@@ -33,9 +33,9 @@ export function attendanceReport(from, to, opts = {}) {
 
 function computeReport(from, to, { departmentId, employeeId, branchId, groupId, designationId, employeeIds } = {}, S) {
   // Inactive staff stay in the report for the part of the range they were employed (resigned/terminated on or after `from`).
-  let sql = `SELECT e.id, e.code, e.name, e.join_date, e.shift_id, e.ot_policy_id, e.department_id, e.rotation_id, e.rotation_anchor, e.group_id, e.branch_id, e.att_policy_id, d.name AS dept, br.name AS branch_name
+  let sql = `SELECT e.id, e.code, e.name, e.join_date, e.shift_id, e.ot_policy_id, e.department_id, e.rotation_id, e.rotation_anchor, e.group_id, e.branch_id, e.att_policy_id, e.enable_schedule, e.enable_holiday, e.enable_ot, e.enable_comp, d.name AS dept, br.name AS branch_name
              FROM employees e LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN branches br ON br.id=e.branch_id
-             WHERE (e.active=1 OR e.id IN (SELECT employee_id FROM emp_history WHERE kind IN ('resignation','termination') AND date>=?))`;
+             WHERE COALESCE(e.enable_att,1)=1 AND (e.active=1 OR e.id IN (SELECT employee_id FROM emp_history WHERE kind IN ('resignation','termination') AND date>=?))`; // Enable Attendance = No: left out of attendance altogether
   const args = [from];
   for (const [v, col] of [[departmentId, 'e.department_id'], [employeeId, 'e.id'], [branchId, 'e.branch_id'], [groupId, 'e.group_id'], [designationId, 'e.designation_id']])
     if (v) { sql += ` AND ${col}=?`; args.push(v); }
@@ -76,7 +76,7 @@ function computeReport(from, to, { departmentId, employeeId, branchId, groupId, 
       if (day < employedFrom || !employedOn(e.id, day)) continue; // not employed / no history yet: never count as absent
       const d0 = dayMin(day);
       const first = mine.find(m => m >= d0 && m < d0 + 1440);
-      const R = resolve(e, day, first === undefined ? null : first - d0); // roster > rotation > own shift (or the alternate nearest the arrival) > department shift
+      const R = e.enable_schedule === 0 ? { sh: null } : resolve(e, day, first === undefined ? null : first - d0); // Enable Schedule = No: no shift, so no late or early // roster > rotation > own shift (or the alternate nearest the arrival) > department shift
       const sh = R.sh, type = sh?.type || 'fixed';
       const P = otPolicy(S, e.ot_policy_id ? policies.get(e.ot_policy_id) : (sh?.ot_policy_id ? policies.get(sh.ot_policy_id) : null));
       const workdays = (sh?.workdays ?? '1,2,3,4,5,6').split(',').map(Number);
@@ -84,7 +84,7 @@ function computeReport(from, to, { departmentId, employeeId, branchId, groupId, 
       const [w0, w1] = overnight ? [d0 + toMin(sh.start) - 180, d0 + 1440 + toMin(sh.end) + 180] : [d0, d0 + 1440];
       const pts = mine.filter(m => m >= w0 && m < w1);
       const worksToday = R.fromRotation ? !R.off : workdays.includes(dow(day)) && !altOffDay(sh, day);
-      const dayType = holidays.has(day) ? 'holiday' : worksToday ? 'work' : 'weekend';
+      const dayType = holidays.has(day) && e.enable_holiday !== 0 ? 'holiday' : worksToday ? 'work' : 'weekend';
       const leave = leaves.find(l => l.employee_id === e.id && l.from_date <= day && day <= l.to_date);
       const r = { employee_id: e.id, code: e.code, name: e.name, dept: e.dept, branch: e.branch_name ?? '', shift: sh?.name ?? '', date: day, day_type: dayType, in: null, out: null,
                   late_min: 0, early_min: 0, overtime_min: 0, ot_calc_min: 0, ot_pre_min: 0, ot_manual_min: 0, ot_approved_min: 0, ot_status: '',
@@ -134,6 +134,7 @@ function computeReport(from, to, { departmentId, employeeId, branchId, groupId, 
     const month = new Map();
     for (const r of rows.slice(mine_rows_start)) {
       const P = rowP.get(r);
+      if (e.enable_ot === 0) { r.ot_calc_min = r.ot_pre_min = r.ot_manual_min = r.ot_approved_min = r.overtime_min = 0; r.ot_status = ''; continue; } // Enable Overtime = No
       if (P.monthly_max > 0 && r.ot_calc_min > 0) {
         const used = month.get(r.date.slice(0, 7)) ?? 0, allowed = Math.max(0, P.monthly_max - used);
         if (r.ot_calc_min > allowed) { r.ot_calc_min = allowed; r.ot_pre_min = Math.min(r.ot_pre_min, allowed); r.note = (r.note ? r.note + '. ' : '') + 'Monthly overtime limit'; }
@@ -148,6 +149,7 @@ function computeReport(from, to, { departmentId, employeeId, branchId, groupId, 
       if (r.ot_manual_min) r.ot_status = r.ot_status ? r.ot_status + '+manual' : 'manual';
       r.ot_approved_min += r.ot_manual_min;
       r.overtime_min = r.ot_calc_min + r.ot_manual_min;
+      if (e.enable_comp === 1 && r.overtime_min) { r.ot_approved_min = 0; r.ot_status = 'compensatory'; r.note = (r.note ? r.note + '. ' : '') + 'Compensatory time off instead of overtime pay'; } // Enable Compensatory = Yes: time off, not paid
     }
   }
   return rows;

@@ -17,7 +17,7 @@ try {
   // ---- device actions
   const act = (action, args, ids = [gate]) => api('zkd/devices/action', 'POST', { ids, action, args });
   await assert.rejects(act('nope'), /Unknown action/); await assert.rejects(api('zkd/devices/action', 'POST', { ids: [], action: 'reboot' }), /at least one/);
-  assert.deepEqual(await act('reboot', {}, [gate, pull]), { done: 1, skipped: 1, queued: 1 });
+  assert.deepEqual(await act('reboot', {}, [gate, pull]), { done: 1, skipped: 1, queued: 1, direct: 0 });
   for (const [a, args, re] of [['clear-attlog', {}, /^CLEAR LOG$/], ['clear-photo', {}, /^CLEAR PHOTO$/], ['clear-all', {}, /^CLEAR DATA$/], ['upload-users', {}, /tablename=USERINFO/], ['info', {}, /^INFO$/], ['upload-tx', { from: '2026-01-01', to: '2026-01-31' }, /ATTLOG StartTime=2026-01-01 00:00:00\s+EndTime=2026-01-31 23:59:59/],
     ['enroll-remote', { pin: '5', fid: 2 }, /ENROLL_FP PIN=5\s+FID=2/], ['dup-punch', { minutes: 3 }, /SET OPTION DuplicatePunchPeriod=3/], ['capture-setting', { on: '0' }, /CameraOpen=0/], ['dst', { on: '1' }, /DSTOn=1/], ['punch-state', { on: '1' }, /PunchStateAuto=1/],
     ['upgrade', { url: 'http://x.test/fw.bin', size: 5 }, /^UPGRADE checksum=,url=http:\/\/x.test\/fw.bin,size=5/], ['download-file', { path: 'user.dat' }, /^GET FILE user.dat/], ['set-option', { name: 'Delay', value: '20' }, /^SET OPTION Delay=20/]]) {

@@ -40,7 +40,7 @@ public class MainActivity extends Activity {
     /** First start: where is the attendance server? */
     private void askServer() {
         LinearLayout box = new LinearLayout(this); box.setOrientation(LinearLayout.VERTICAL); box.setPadding(56, 120, 56, 56);
-        TextView t = new TextView(this); t.setText("Attendance Alerts"); t.setTextSize(24); t.setTextColor(0xFF1c2038);
+        TextView t = new TextView(this); t.setText("Optix Alerts"); t.setTextSize(24); t.setTextColor(0xFF1c2038);
         TextView h = new TextView(this); h.setText("Type the address of your attendance server, for example 192.168.1.10:8080. Your administrator can tell you.\n"); h.setTextColor(0xFF7b8199); h.setPadding(0, 16, 0, 16);
         EditText e = new EditText(this); e.setHint("192.168.1.10:8080"); e.setInputType(InputType.TYPE_TEXT_VARIATION_URI); e.setText(Session.server(this).replace("http://", "").replace("https://", ""));
         TextView err = new TextView(this); err.setTextColor(0xFFe5484d);

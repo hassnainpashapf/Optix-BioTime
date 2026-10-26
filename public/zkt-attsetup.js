@@ -80,7 +80,7 @@ const pcFields=[{k:'code',l:'Code',req:true},{k:'name',l:'Name',req:true},{k:'pt
   {k:'fixed_hours',l:'Working Fixed Hours (Hour)',t:'number',req:true},{k:'unit',l:'Unit',t:'select',opts:['Minute','Hour','Workday','HH:MM'].map(x=>[x,x]),blank:false},{k:'symbol',l:'Symbol'},{k:'round_off',l:'Round Off',t:'select',opts:['Round Off','Round Up','Round Down'].map(x=>[x,x]),blank:false},
   {k:'min_val',l:'Minimum',t:'number',req:true},{k:'ord',l:'Display Order',t:'number',req:true},{k:'display',l:'Display',t:'checkbox'},{k:'descr',l:'Description',t:'textarea'},{k:'color',l:'Color Settings',hint:'e.g. #f0ad4e'}];
 attGrid('Pay codes','Pay Code',{load:()=>A('paycodes'),defaults:{pay_factor:1,fixed_hours:8,unit:'Hour',round_off:'Round Off',min_val:0.1,ord:999,display:1,ptype:'Regular'},
-  cols:[['Code','code',{link:true}],['Name','name'],['Type','ptype'],['Unit','unit'],['Symbol',r=>r.symbol||''],['Order','ord'],['Description',r=>r.descr||'-'],['Color Settings',r=>swatch(r.color),{html:true}],['Display',r=>r.display?window.ZK_OK:'<span style="color:#d9453f">&#10007;</span>',{html:true}]],
+  cols:[['Code','code',{link:true}],['Name','name'],['Type','ptype'],['Unit','unit'],['Symbol',r=>r.symbol||''],['Order','ord'],['Description',r=>r.descr||'-'],['Color Settings',r=>swatch(r.color)||'-',{html:true}],['Display',r=>r.display?window.ZK_OK:'<span style="color:#d9453f">&#10007;</span>',{html:true}]],
   fields:pcFields,api:'att/paycodes',note:'Every attendance status has a code. Pay Share is how much of a day is paid for it (1 = full day, 0 = nothing); payroll takes the unpaid part off the salary.'},'settings');
 
 attGrid('zk:fixedcode','Fixed Code',{acts:[],rowDel:false,load:()=>A('fixedcodes'),defaults:{format:'HH:MM',round_off:'Round Off',min_val:0.1},
@@ -170,7 +170,26 @@ const shToForm=r=>({...r,alias:r.name,auto_shift:!!r.auto_shift_key,enable_ot_ru
 attGrid('Shifts','Shift',{details:true,load:()=>A('shiftdefs'),defaults:{workdays:'1,2,3,4,5,6',grace_min:10,unit:'Week',cycle:1},fields:shFields,api:'att/shiftdefs',
   cols:[['Shift Name','name',{link:true}],['Timetable','timetable'],['Unit','unit'],['Cycle','cycle'],['Auto Shift','auto_shift'],['Weekly Overtime','weekly_ot']],
   save:async(b,row)=>{for(const f of ['t1_hrs_from','t1_hrs_to','t2_hrs_from','t2_hrs_to','t3_hrs_from','t3_hrs_to'])if(b[f]==null)b[f]=0;return api(row?`att/shiftdefs/${row.id}`:'att/shiftdefs',row?'PUT':'POST',b)}},'shifts',tailOf('Shifts','Rotations, saved breaks, overtime policies and shift rules (advanced)'));
-ZK.custom['Shifts']=id=>{const s=ZK.G['Shifts'],o=s.o,row=id?s.all.find(r=>r.id===id):null;ZK.form((id?'Edit ':'Add ')+'Shift',shFields,row?shToForm(row):o.defaults,b=>o.save(b,row))};
+ZK.custom['Shifts']=async id=>{const s=ZK.G['Shifts'],row=id?s.all.find(r=>r.id===id):null,tts=await A('timetables');
+  const S=window.SHF={tts,id,unit:row?.unit||'Week',cycle:row?.cycle||1,sel:null,pat:row?.pattern||null,fields:[{k:'code',l:'Short code',hint:'Up to 4 letters, shown on the shift calendar'},{k:'grace_min',l:'Grace (Minute)',t:'number'}],otf:[{k:'enable_ot_rule',l:'Weekly Overtime',t:'checkbox'},...tierFields('t')],row};
+  if(row&&!S.pat){const ids=tts.find(t=>t.id===row.timetable_id)?row.timetable_id:null,wd=String(row.workdays||'').split(',').map(Number);S.pat=[Array.from({length:7},(_,i)=>wd.includes(i)?ids:null)]}
+  S.sel=row?.timetable_id||(tts[0]||{}).id||null;
+  const v=row?shToForm(row):s.o.defaults,f1=(await Promise.all(S.fields.map(f=>ZK.fieldHtml(f,v[f.k])))).join(''),f2=(await Promise.all(S.otf.map(f=>ZK.fieldHtml(f,v[f.k])))).join('');
+  const m=orgModal('Add',`<div class="shtop"><label>Shift Name <b style="color:#e0281b">*</b><input id="sh_name" value="${esc(row?.name||'')}"></label><label>Auto Shift<input id="sh_auto" type="checkbox" ${row?.auto_shift_key?'checked':''}></label></div>
+  <div class="shtabs"><a class="on" onclick="shTab(0)">General Setting</a><a onclick="shTab(1)">Other Setting</a><a onclick="shTab(2)">Weekly Overtime</a></div>
+  <div id="shp0" class="shpane"><div class="shl"><input id="sh_q" placeholder="Timetable" oninput="shDraw()"><div class="shtt"><table id="sh_tt"></table></div></div><div class="shr"><div class="shur"><label>Unit <b style="color:#e0281b">*</b> <select id="sh_unit" onchange="shUnit()">${['Day','Week','Month'].map(u=>`<option ${u===S.unit?'selected':''}>${u}</option>`).join('')}</select></label><label>Cycle <b style="color:#e0281b">*</b> <input id="sh_cyc" type="number" min="1" max="31" value="${S.cycle}" onchange="shUnit()"></label></div><div class="shg"><table id="sh_grid"></table></div></div></div>
+  <div id="shp1" class="shpane" style="display:none"><div class="grid">${f1}</div></div><div id="shp2" class="shpane" style="display:none"><div class="grid">${f2}</div></div>
+  <div class="shnote"><b>*Notice</b><br>1. Pick a timetable on the left, then click the days of the grid it applies to.<br>2. Click a filled day again to clear it. Different days can use different timetables.</div>`,'shGo()');
+  m.firstChild.classList.add('shw');window.shTab=i=>{[0,1,2].forEach(j=>{document.getElementById('shp'+j).style.display=j===i?'':'none';document.querySelectorAll('.shtabs a')[j].classList.toggle('on',j===i)})};shDraw();shGridDraw()};
+window.shDraw=()=>{const S=window.SHF,q=(document.getElementById('sh_q').value||'').toLowerCase();document.getElementById('sh_tt').innerHTML=`<tr><th></th><th>Name</th><th>Check-In</th><th>Check-Out</th><th>Break Time</th></tr>`+(S.tts.filter(t=>t.name.toLowerCase().includes(q)).map(t=>`<tr class="${t.id===S.sel?'on':''}" onclick="SHF.sel=${t.id};shDraw()"><td><input type="radio" ${t.id===S.sel?'checked':''}></td><td>${esc(t.name)}</td><td>${hm5(t.check_in)}</td><td>${hm5(t.check_out)}</td><td>${esc(t.break_time||'')}</td></tr>`).join('')||'<tr><td colspan=5 style="text-align:center;color:#999">None</td></tr>')};
+window.shUnit=()=>{const S=window.SHF;S.unit=document.getElementById('sh_unit').value;S.cycle=Math.max(1,Math.min(31,Number(document.getElementById('sh_cyc').value)||1));S.pat=null;shGridDraw()};
+window.shGridDraw=()=>{const S=window.SHF,w=S.unit==='Week'?7:S.unit==='Month'?31:1,hd=S.unit==='Week'?['Sun','Mon','Tue','Wed','Thu','Fri','Sat']:Array.from({length:w},(_,i)=>S.unit==='Month'?i+1:'Day');
+  S.pat=Array.from({length:S.cycle},(_,r)=>Array.from({length:w},(_,c)=>(S.pat&&S.pat[r]&&S.pat[r][c])||null));
+  document.getElementById('sh_grid').innerHTML=`<tr><th style="width:26px"></th>${hd.map(h=>`<th>${h}</th>`).join('')}</tr>`+S.pat.map((r,i)=>`<tr><td>${i+1}</td>${r.map((v,c)=>`<td class="shc ${v?'on':''}" onclick="shCell(${i},${c})">${v?esc((S.tts.find(t=>t.id===v)||{}).name||''):''}</td>`).join('')}</tr>`).join('')};
+window.shCell=(r,c)=>{const S=window.SHF;S.pat[r][c]=S.pat[r][c]?null:S.sel;shGridDraw()};
+window.shGo=async()=>{const S=window.SHF,e=document.getElementById('om_e'),name=document.getElementById('sh_name').value.trim();if(!name)return e.textContent='Shift Name is required';
+  const b={alias:name,auto_shift:document.getElementById('sh_auto').checked,unit:S.unit,cycle:S.cycle,pattern:S.pat,...ZK.read([...S.fields,...S.otf])};for(const f of ['t1_hrs_from','t1_hrs_to','t2_hrs_from','t2_hrs_to','t3_hrs_from','t3_hrs_to'])if(b[f]==null)b[f]=0;
+  try{await api(S.row?`att/shiftdefs/${S.row.id}`:'att/shiftdefs',S.row?'PUT':'POST',b);document.getElementById('dvm')?.remove();go('Shifts')}catch(x){e.textContent=x.message}};
 
 // ============================================================ Schedule assignment
 const shiftOpts=async()=>(await A('shiftdefs')).map(s=>[s.id,`${s.name} (${s.timetable})`]);
@@ -212,8 +231,8 @@ ZK.reg('zk:personsched','View by Person',async()=>{const f=window.PSF,emps=await
 // ============================================================ Approvals
 const dtF=(k,l,x={})=>({k,l,t:'datetime',req:true,...x});
 const approvalActs=(key,o)=>[['Add'],['Delete'],['Bulk Add',()=>o.bulk()],['Approve',ctx=>each(ctx,r=>o.approve(r),'approved')],['Reject',ctx=>{const n=note();if(n===null)return;return each(ctx,r=>o.reject(r,n),'rejected')}],['Revoke',ctx=>each(ctx,r=>o.revoke(r),'revoked')],['Import',()=>o.imp()]];
-const apCols=(mid)=>[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Department',r=>r.dept||''],...mid,['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],];
-const tail=[['Approval Status','approval_status']];
+const apCols=(mid)=>[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Department',r=>r.dept||''],['Position',r=>r.position||''],...mid,['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],];
+const tail=[['Approval Status','approval_status'],['Workflow Builder',r=>r.workflow||'General'],['Attachment',r=>r.attachment||''],['Approval Comment',r=>r.decision_note||''],['Approval Time',r=>r.decided_at||''],['Last Approver',r=>r.decided_by||'']];
 const nowLocal=()=>new Date().toLocaleString('sv').slice(0,16);
 
 // ---- Manual Log (Requests)
@@ -225,7 +244,7 @@ const mlApi={approve:r=>api(`attendance/requests/${r.id}/approve`,'POST',{}),rej
 const WFD={title:'Workflow',render:r=>`<div style="line-height:26px">${[['Applicant',(r.name||r.code||'')],['Apply Time',r.apply_time],['Reason',r.reason],['Approval Status',r.approval_status||r.status],['Approved By',r.approved_by||r.approver]].map(x=>`<div><b style="font-weight:400;color:#999;display:inline-block;width:110px">${x[0]}</b>${esc(x[1]||'')}</div>`).join('')}</div>`};
 attGrid('Requests','Manual Log',{details:{title:'Workflow',render:r=>`<div style="line-height:26px"><div><b style="font-weight:400;color:#999;display:inline-block;width:110px">Applicant</b>${esc(r.name||r.code||'')}</div><div><b style="font-weight:400;color:#999;display:inline-block;width:110px">Apply Time</b>${esc(r.apply_time||'')}</div><div><b style="font-weight:400;color:#999;display:inline-block;width:110px">Reason</b>${esc(r.reason||'')}</div><div><b style="font-weight:400;color:#999;display:inline-block;width:110px">Approval Status</b>${esc(r.approval_status||r.status||'')}</div><div><b style="font-weight:400;color:#999;display:inline-block;width:110px">Approved By</b>${esc(r.approved_by||r.approver||'')}</div></div>`},load:()=>A('manuallog?'+fq('Requests')),defaults:{type:'punch',punch_time:nowLocal(),punch_state:0,auto_approve:false},fields:mlFields,api:'att/manuallog',remove:id=>A('manuallog/'+id,'DELETE'),
   filter:()=>fbar('Requests',{dates:true,empty:true}),
-  cols:[...apCols([['Punch Time','punch_time'],['Punch State','punch_state'],['Work Code',r=>r.work_code||'']]).slice(0,4),['Punch Time','punch_time'],['Punch State','punch_state'],['Work Code',r=>r.work_code||''],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
+  cols:[...apCols([['Punch Time','punch_time'],['Punch State','punch_state'],['Work Code',r=>r.work_code||'']]).slice(0,6),['Punch Time','punch_time'],['Punch State','punch_state'],['Work Code',r=>r.work_code||''],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
   acts:approvalActs('Requests',mlApi)},'attendance');
 ZK.custom['Requests']=id=>{const s=ZK.G['Requests'];if(id)return alert('A manual log cannot be edited. Revoke or delete it and add a new one.');ZK.form('Add Manual Log',mlFields,s.o.defaults,b=>A('manuallog','POST',b))};
 
@@ -237,7 +256,7 @@ const lvApi={approve:r=>api(`leaves/${r.id}/approve`,'POST',{}),reject:(r,n)=>ap
   imp:()=>attImport('Import Leave','att/leavelist/import','employee ID, leave type, start date, end date, reason',{auto:true})};
 attGrid('Leaves','Leave',{details:WFD,load:()=>A('leavelist?'+fq('Leaves')),defaults:{start_time:today(),end_time:today(),auto_approve:false},fields:lvFields,api:'leaves',remove:id=>api('leaves/'+id,'DELETE'),filter:()=>fbar('Leaves',{dates:true,empty:true}),
   save:b=>api('leaves','POST',{employee_id:b.employee_id,from_date:b.start_time,to_date:b.end_time,type:b.pay_code,half:b.half,note:b.reason,auto_approve:b.auto_approve}),
-  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Department',r=>r.dept||''],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time',r=>r.apply_time||''],['Pay Code','pay_code'],...tail],
+  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Department',r=>r.dept||''],['Position',r=>r.position||''],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time',r=>r.apply_time||''],['Pay Code','pay_code'],...tail],
   acts:approvalActs('Leaves',lvApi)},'leave',async()=>'<input id="l_e" type="hidden"><div id="balbox"></div>');
 ZK.custom['Leaves']=id=>{const s=ZK.G['Leaves'];if(id)return alert('A leave cannot be edited. Revoke or delete it and add a new one.');ZK.form('Add Leave',lvFields,s.o.defaults,b=>s.o.save(b))};
 
@@ -249,7 +268,7 @@ const otApi={approve:r=>api(`overtime/${r.id}/approve`,'POST',{}),reject:(r,n)=>
   imp:()=>attImport('Import Overtime','att/otlist/import','employee ID, start YYYY-MM-DD HH:MM, end YYYY-MM-DD HH:MM, pay code, reason')};
 attGrid('Overtime','Overtime',{details:WFD,load:()=>A('otlist?'+fq('Overtime')),defaults:{start_time:today()+' 18:00',end_time:today()+' 20:00',pay_code:'Normal OT'},fields:otFields,api:'att/otlist',remove:id=>api('overtime/'+id,'DELETE'),filter:()=>fbar('Overtime',{dates:true}),
   save:b=>A('otlist','POST',b),
-  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Department',r=>r.dept||''],['Pay Code','pay_code'],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
+  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Department',r=>r.dept||''],['Position',r=>r.position||''],['Pay Code','pay_code'],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
   acts:approvalActs('Overtime',otApi)},'overtime',tailOf('Overtime','Overtime report and overtime policies (advanced)'));
 ZK.custom['Overtime']=id=>{const s=ZK.G['Overtime'];if(id)return alert('Overtime cannot be edited. Revoke or delete it and add a new one.');ZK.form('Add Overtime',otFields,s.o.defaults,b=>s.o.save(b))};
 
@@ -261,14 +280,14 @@ const trApi={approve:r=>A(`training/${r.id}/approve`,'POST',{}),reject:(r,n)=>A(
   imp:()=>attImport('Import Training','att/training/import','employee ID, start YYYY-MM-DD HH:MM, end YYYY-MM-DD HH:MM, pay code, reason',{auto:true})};
 attGrid('zk:training','Training',{details:WFD,load:()=>A('training?'+fq('zk:training')),defaults:{start_time:today()+' 09:00',end_time:today()+' 17:00',pay_code:'Training'},fields:trFields,api:'att/training',remove:id=>A('training/'+id,'DELETE'),filter:()=>fbar('zk:training'),
   save:(b,row)=>row?A('training/'+row.id,'PUT',b):A('training','POST',b),
-  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Department',r=>r.dept||''],['Pay Code','pay_code'],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
+  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Department',r=>r.dept||''],['Position',r=>r.position||''],['Pay Code','pay_code'],['Start Time','start_time'],['End Time','end_time'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
   acts:approvalActs('zk:training',trApi)},'attendance');
 ZK.custom['zk:training']=id=>{const s=ZK.G['zk:training'],row=id?s.all.find(r=>r.id===id):null;if(row&&row.status!=='pending')return alert('Only a pending training can be edited.');ZK.form((id?'Edit ':'Add ')+'Training',id?trFields.filter(f=>f.k!=='employee_id'&&f.k!=='auto_approve'):trFields,row||s.o.defaults,b=>s.o.save(b,row))};
 
 // ---- Schedule Adjustment
 const saFields=[{k:'employee_id',l:'Employee',t:'select',req:true,opts:empOpts},{k:'auto_approve',l:'Auto Approved',t:'checkbox'},dateF('date','Date'),{k:'shift_id',l:'New Schedule',t:'select',req:true,opts:shiftOpts},{k:'reason',l:'Apply Reason',t:'textarea'}];
 attGrid('zk:schedadj','Schedule Adjustment',{load:()=>A('schedadj'),defaults:{date:today()},fields:saFields,api:'att/schedadj',
-  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Department',r=>r.dept||''],['Date','date'],['Previous Schedule',r=>r.previous||''],['New Schedule','new_schedule'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],['Approval Status','approval_status']],
+  cols:[['Employee ID','code',{link:true}],['Photo',photo,{html:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Department',r=>r.dept||''],['Position',r=>r.position||''],['Date','date'],['Previous Schedule',r=>r.previous||''],['New Schedule','new_schedule'],['Apply Reason',r=>r.reason||''],['Apply Time','apply_time'],...tail],
   acts:[['Add'],['Delete'],['Approve',ctx=>each(ctx,r=>api(`shifts/requests/${r.id}/approve`,'POST',{}),'approved')],['Reject',ctx=>{const n=note();if(n===null)return;return each(ctx,r=>api(`shifts/requests/${r.id}/reject`,'POST',{note:n}),'rejected')}],['Revoke',ctx=>each(ctx,r=>api(`shifts/requests/${r.id}/cancel`,'POST',{}),'revoked')]]},'shifts');
 ZK.custom['zk:schedadj']=id=>{if(id)return alert('A schedule adjustment cannot be edited. Revoke or delete it and add a new one.');ZK.form('Add Schedule Adjustment',saFields,ZK.G['zk:schedadj'].o.defaults,b=>A('schedadj','POST',b))};
 

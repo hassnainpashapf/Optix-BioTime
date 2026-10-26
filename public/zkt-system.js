@@ -31,9 +31,38 @@ ZK.grid('zk:usergroup','UserGroup',{module:AD,defaults:Object.fromEntries(Object
   fields:[{k:'name',l:'Name',t:'text',req:true},...Object.keys(MODN).map(m=>({k:'p_'+m,l:'Permissions: '+MODN[m],t:'select',blank:false,opts:[['none','No access'],['view','View'],['edit','Edit']]}))],
   save:async(b,row)=>{const perms={};for(const m of MODS)perms[m]=b['p_'+m]||'none';await api(row?'roles/'+row.name:'roles',row?'PUT':'POST',row?{perms}:{name:b.name,perms})},
   remove:async id=>{const r=ZK.G['zk:usergroup'].all.find(x=>x.id===id);await api('roles/'+r.name,'DELETE')}});
+const UGT={Personnel:[['Employee','employees'],['Resign','employees'],['Document','employees'],['Department','organization'],['Position','organization'],['Area','organization'],['Workflow Role','settings'],['Workflow Node','settings'],['Workflow Builder','settings'],['Custom Attribute','settings'],['Configuration','settings']],
+ Device:[['Device','devices'],['Device Command','devices'],['Device Parameter','devices'],['Message','devices'],['Data','devices'],['Log','devices'],['Mobile App','devices'],['Geo-fence','devices']],
+ Attendance:[['Pay Code','settings'],['Rule','settings'],['Break Time','shifts'],['Timetable','shifts'],['Shift','shifts'],['Schedule Assignment','shifts'],['Manual Log','attendance'],['Leave','leave'],['Overtime','overtime'],['Training','attendance'],['Transaction Report','attendance'],['Daily Report','attendance'],['Weekly Report','attendance'],['Monthly Report','attendance'],['Summary Report','attendance'],['Custom Report','attendance']],
+ Payroll:[['Formula','payroll'],['Extra Funds','payroll'],['Structure','payroll'],['Profile','payroll'],['Special Payment','payroll'],['Exemption','payroll'],['Payslip','payroll']],
+ Access:[['Time Period','access'],['Holiday','access'],['Groups','access'],['Combination','access'],['Privilege','access']],
+ Visitor:[['Visitor','attendance'],['Reason','attendance'],['Transaction','attendance']],
+ Meeting:[['Room','organization'],['Meeting','organization'],['Manual Log','organization'],['Transaction','organization']],
+ MTD:[['Daily Report','attendance'],['Department Summary','attendance'],['Abnormal','attendance']],
+ System:[['UserGroup','settings'],['User','settings'],['API Permissions','settings'],['Notification','settings'],['Database','settings'],['Log','settings'],['Configuration','settings']]};
+const UGA=['Browse','Add','Change','Delete'];
+const ugK=(tab,pg,a)=>(window.UGS.sub||[]).includes(tab+'.'+pg)?tab+'.'+pg:a;
+const ugCount=(tab)=>{const S=window.UGS;let n=0,t=0;for(const [pg,a] of UGT[tab]){const k=ugK(tab,pg,a);for(const x of UGA){t++;if(S.st[k].has(x))n++}}return[n,t]};
+window.ugDraw=()=>{const S=window.UGS;document.querySelectorAll('.ugtabs a').forEach(a=>a.classList.toggle('on',a.dataset.t===S.tab));
+  const [n,t]=ugCount(S.tab);let h=`<div class="ugbar"><a onclick="ugAll(${n===t?0:1})" title="Select all">&#9745;</a> <a onclick="UGS.open=new Set(UGT[UGS.tab].map(x=>x[0]));ugDraw()">&#8963;</a> <a onclick="UGS.open=new Set();ugDraw()">&#8964;</a></div><div class="ugroot"><span class="ugc ${n===t?'on':n?'half':''}" onclick="ugAll(${n===t?0:1})"></span>${S.tab} (${n}/${t})</div><div class="ugkids">`;
+  for(const [pg,a0] of UGT[S.tab]){const a=ugK(S.tab,pg,a0),c=UGA.filter(x=>S.st[a].has(x)).length,o=S.open.has(pg);h+=`<div class="ugpg"><span class="ugar" onclick="ugTog('${pg}')">${o?'&#9662;':'&#9656;'}</span><span class="ugc ${c===4?'on':c?'half':''}" onclick="ugPage('${a}',${c===4?0:1})"></span>${pg} (${c}/4)</div>`;
+    if(o)h+=UGA.map(x=>`<div class="ugact"><span class="ugc ${S.st[a].has(x)?'on':''}" onclick="ugAct('${a}','${x}')"></span>${x}</div>`).join('')}
+  document.getElementById('ug_tree').innerHTML=h+'</div>'};
+window.ugTog=pg=>{const o=UGS.open;o.has(pg)?o.delete(pg):o.add(pg);ugDraw()};
+window.ugAct=(a,x)=>{const st=UGS.st[a];st.has(x)?st.delete(x):st.add(x);if(x!=='Browse'&&st.has(x))st.add('Browse');if(x==='Browse'&&!st.has('Browse'))UGA.forEach(y=>st.delete(y));ugDraw()};
+window.ugPage=(a,on)=>{UGS.st[a]=new Set(on?UGA:[]);ugDraw()};
+window.ugAll=on=>{for(const [pg,a] of UGT[UGS.tab])UGS.st[ugK(UGS.tab,pg,a)]=new Set(on?UGA:[]);ugDraw()};
 {const orig=ZK.edit;ZK.edit=async(key,id)=>{if(key!=='zk:usergroup')return orig(key,id);const s=ZK.G[key],row=id?s.all.find(r=>r.id===id):{perms:Object.fromEntries(Object.keys(MODN).map(m=>[m,['payroll','settings'].includes(m)?'none':'view']))};if(id&&row.builtin)return alert('The admin group has every permission and cannot be changed');
-  const v={name:row.name};for(const m of MODS)v['p_'+m]=(row.perms||{})[m]||'none';const fields=id?s.o.fields.map(f=>f.k==='name'?{...f,t:'text',ph:'',hint:'(cannot be renamed)'}:f):s.o.fields;
-  ZK.form((id?'Edit ':'Add ')+'UserGroup',fields,v,async b=>{if(id)b.name=row.name;return s.o.save(b,id?row:null)})}}
+  const sub=await api('zk/subpages').catch(()=>[]),st={},toSet=l=>new Set(l==='edit'?UGA:l.startsWith('view')?['Browse',...l.split('+').slice(1).map(x=>x[0].toUpperCase()+x.slice(1))]:[]);for(const m of Object.keys(MODN))st[m]=toSet((row.perms||{})[m]||'none');for(const k of sub)st[k]=toSet((row.perms||{})[k]||(row.perms||{})[(Object.entries(UGT).flatMap(([t,l])=>l.map(([pg,a])=>[t+'.'+pg,a])).find(x=>x[0]===k)||[])[1]]||'none');
+  window.UGS={st,sub,tab:'Personnel',open:new Set(),row,id};
+  const m=orgModal('Add',`<div class="ugname"><label>Name <b style="color:#e0281b">*</b><input id="ug_name" value="${esc(row.name||'')}" ${id?'readonly':''}></label></div><div class="ugtabs">${Object.keys(UGT).map(t=>`<a data-t="${t}" onclick="UGS.tab='${t}';ugDraw()">${t}</a>`).join('')}</div><div id="ug_tree" class="ugtree"></div><div class="shnote">Each page can be set on its own where it has its own data; pages marked with a shared part (for example Workflow, Reports) follow the part they belong to. Add = create, Change = edit, Delete = remove. A page that is not ticked cannot be opened, including the lists other pages use.</div>`,'ugGo()');
+  m.firstChild.classList.add('shw');ugDraw()}}
+window.ugGo=async()=>{const S=window.UGS,e=document.getElementById('om_e'),name=document.getElementById('ug_name').value.trim();if(!name)return e.textContent='Name is required';
+  const lvl=st=>{const ex=['Add','Change','Delete'].filter(x=>st.has(x));return ex.length===3?'edit':ex.length?'view+'+ex.map(x=>x.toLowerCase()).join('+'):st.size?'view':'none'};
+  const perms={},pageOf=[];for(const [t,l] of Object.entries(UGT))for(const [pg,a] of l)pageOf.push([t+'.'+pg,a]);
+  for(const m of MODS){const u=new Set(S.st[m]||[]);for(const [k,a] of pageOf)if(a===m&&S.sub.includes(k))S.st[k].forEach(x=>u.add(x));perms[m]=lvl(u)}
+  for(const [k,a] of pageOf)if(S.sub.includes(k)&&lvl(S.st[k])!==perms[a])perms[k]=lvl(S.st[k]);
+  try{await api(S.id?'roles/'+S.row.name:'roles',S.id?'PUT':'POST',S.id?{perms}:{name,perms});document.getElementById('dvm')?.remove();go(cur)}catch(x){e.textContent=x.message}};
 
 // ---------- User > User ----------
 const deps=async()=>(await api('departments')).map(d=>[d.id,d.name]),areas=async()=>(await api('branches')).map(d=>[d.id,d.name]);
@@ -145,7 +174,7 @@ ZK.grid('zk:calclog','Calculation Log',{module:AD,load:async()=>api('zk/calclog'
   note:'Add runs the attendance calculation for a period and records it here.',
   fields:[{k:'from',l:'Attendance Dates from',t:'date',req:true},{k:'to',l:'to',t:'date',req:true},{k:'department_id',l:'Run Group (department)',t:'select',opts:deps,blank:'All employees'}],defaults:{from:mstart(),to:today()},
   save:async b=>{await api('zk/calclog','POST',b)},remove:async id=>api('zk/calclog/'+id,'DELETE')});
-ZK.grid('zk:apireq','API Request',{module:AD,load:async()=>api('zk/apireq'),cols:[['User','user'],['Request Time','ts'],['Path','path'],['Method','method'],['Remote Address','ip'],['Status','status'],['Time',r=>r.ms+' ms']],
+ZK.grid('zk:apireq','API Request',{module:AD,load:async()=>api('zk/apireq'),cols:[['User','user'],['Request Time','ts'],['Path','path'],['Method','method'],['Host','host'],['Remote Address','ip'],['Status','status'],['Time',r=>r.ms+' ms'],['Errors','error']],
   acts:[['Delete']],remove:async id=>api('zk/apireq/'+id,'DELETE'),note:'Requests of other software to the /api/v1 interface (the key name is the user).'});
 ZK.grid('zk:walog','WhatsApp Log',{module:AD,load:async()=>api('zk/walog'),cols:[['Employee ID',r=>r.emp_code||''],['Content','content'],['Status','status'],['Reason','reason'],['Push Time','ts']],
   fields:[{k:'emp_code',l:'Employee ID',t:'text',hint:'or a phone number below'},{k:'phone',l:'Phone',t:'text'},{k:'content',l:'Content',t:'textarea',req:true}],

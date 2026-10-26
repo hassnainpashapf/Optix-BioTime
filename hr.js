@@ -22,7 +22,7 @@ const FIELDS = ['name', 'department_id', 'shift_id', 'company_id', 'branch_id', 
   'cnic', 'eobi_no', 'bank_name', 'bank_account', 'bank_title'];
 // Identity and bank details: only people with payroll access can see or change them (a salary could be redirected otherwise).
 const PAY = ['cnic', 'eobi_no', 'bank_name', 'bank_account', 'bank_title'];
-const payEdit = (req) => req.role === 'admin' || req.perms?.payroll === 'edit', payView = (req) => req.role === 'admin' || ['view', 'edit'].includes(req.perms?.payroll);
+const payEdit = (req) => req.role === 'admin' || req.perms?.payroll === 'edit', payView = (req) => req.role === 'admin' || /^(view|edit)/.test(req.perms?.payroll ?? '');
 const maskPay = (req, rows) => { if (!payView(req)) for (const r of Array.isArray(rows) ? rows : [rows]) for (const f of PAY) delete r[f]; return rows; };
 export const nextCode = () => String((db.prepare("SELECT MAX(CAST(code AS INTEGER)) m FROM employees WHERE code GLOB '[0-9]*'").get().m ?? 0) + 1);
 
@@ -129,7 +129,7 @@ hrRouter.put('/employees/:id', (req, res) => {
     if (set.length) db.prepare(`UPDATE employees SET ${set.map(f => f + '=?')} WHERE id=?`).run(...vals, old.id);
     const e = db.prepare('SELECT * FROM employees WHERE id=?').get(old.id);
     if ('salary' in b) salaryEdited(old.salary, e, req.user);
-    if (e.name !== old.name || e.active !== old.active) queueUser(e.code, e.name, e.active ? 'update' : 'delete');
+    if (e.name !== old.name || e.active !== old.active || e.branch_id !== old.branch_id) queueUser(e.code, e.name, e.active ? 'update' : 'delete');
     emit('employee.updated', { code: e.code, name: e.name });
     res.json({ ok: true });
   } catch (e) { fail(res, /card_no/.test(e.message) ? 'This card number is already assigned to another employee' : /FOREIGN/.test(e.message) ? 'Unknown department, branch, designation, group or shift' : e.message); }

@@ -14,6 +14,9 @@ const ROLE_DEFAULTS = {
 for (const [name, perms] of Object.entries(ROLE_DEFAULTS))
   db.prepare('INSERT OR IGNORE INTO roles(name, perms, builtin) VALUES(?,?,?)').run(name, JSON.stringify(perms), name === 'admin' ? 1 : 0);
 const RANK = { none: 0, view: 1, edit: 2 };
+// a group can also hold "view+add", "view+change+delete" ...: Add = POST, Change = PUT/PATCH, Delete = DELETE (actions such as approve are POSTs and count as Add)
+const PART = /^view(\+(add|change|delete))+$/, NEED = { POST: 'add', PUT: 'change', PATCH: 'change', DELETE: 'delete' };
+export const levelAllows = (lv, method) => { lv = lv ?? 'none'; if (lv === 'edit') return true; if (lv === 'none') return false; if (method === 'GET' || method === 'HEAD') return true; return PART.test(lv) && lv.split('+').includes(NEED[method] ?? 'add'); };
 export const permsOf = (role) => {
   if (role === 'admin') return all('edit');
   const r = db.prepare('SELECT perms FROM roles WHERE name=?').get(role);
@@ -65,12 +68,31 @@ const RULES = [
   [/^\/settings(\/|$)/, 'settings'],
   [/^\/zkrep\/(dailyLeaveReport|employeeLeaveReport|leaveBalanceSummaryReport)(\/|$)/, 'leave'],
   [/^\/zkrep\/(dailyOvertimeReport|weeklyOvertimeReport|monthlyOvertimeReport|employeeOvertimeReport|departmentOvertimeReport|groupOvertimeReport)(\/|$)/, 'overtime'],
-  [/^\/(logs|attendance|report|stats|reports|monitor|visitors|zkrep|mtd|webauthn|fingerprint)(\/|$)/, 'attendance'],
+  [/^\/(logs|attendance|report|stats|reports|monitor|punch-photo|visitors|zkrep|mtd|webauthn|fingerprint)(\/|$)/, 'attendance'],
   [/^\/(rooms|meetings)(\/|$)/, 'organization'],
   [/^\/notification-rules(\/|$)/, 'settings'],
   [/^\/att_policies(\/|$)/, 'settings'],
   [/^\/automations(\/|$)/, 'settings'],
 ];
+// ---------- single pages inside a module ----------
+// A UserGroup can also hold a level for one page ("Payroll.Formula": "view+add"): when that key is present it decides for the requests of that page, otherwise the module level does.
+const SUBS = [
+  ['Personnel.Resign', /^\/zkp\/resign(\/|$)/], ['Personnel.Document', /^\/documents(\/|$)/],
+  ['Personnel.Department', /^\/(departments|zkp\/org\/departments|org\/departments)(\/|$)/], ['Personnel.Position', /^\/(designations|org\/positions)(\/|$)/], ['Personnel.Area', /^\/(branches|zkp\/org\/areas|org\/areas)(\/|$)/],
+  ['Device.Device', /^\/(devices|device_groups)(\/|$)/], ['Device.Device Command', /^\/(device-commands|zkd\/commands)(\/|$)/], ['Device.Device Parameter', /^\/zkd\/(params|config)(\/|$)/], ['Device.Message', /^\/(device-messages|zkd\/messages)(\/|$)/],
+  ['Device.Data', /^\/zkd\/(devemp|biotemplates|biophotos)(\/|$)/], ['Device.Log', /^\/(device-events|zkd\/transactions)(\/|$)/], ['Device.Mobile App', /^\/zkd\/app(\/|$)/], ['Device.Geo-fence', /^\/zkd\/geo(\/|$)/],
+  ['Attendance.Pay Code', /^\/(pay_codes|att\/(paycodes|fixedcodes))(\/|$)/], ['Attendance.Rule', /^\/att\/(globalrule|rules|config)(\/|$)/], ['Attendance.Break Time', /^\/att\/breaktimes(\/|$)/], ['Attendance.Timetable', /^\/att\/timetables(\/|$)/],
+  ['Attendance.Shift', /^\/(shifts|att\/shiftdefs)(\/|$)/], ['Attendance.Schedule Assignment', /^\/(schedules|att\/(empsched|deptsched|grpsched|personsched|tempsched|schedadj|quickset))(\/|$)/],
+  ['Attendance.Manual Log', /^\/att\/manuallog(\/|$)/], ['Attendance.Training', /^\/att\/training(\/|$)/],
+  ['Payroll.Formula', /^\/payroll\/(formulas|formula-vars)(\/|$)/], ['Payroll.Extra Funds', /^\/payroll\/(extra|extras)(\/|$)/], ['Payroll.Structure', /^\/payroll\/(structure|salary|salary-bulk)(\/|$)/],
+  ['Payroll.Profile', /^\/payroll\/(profiles|employee|employee-history)(\/|$)/], ['Payroll.Special Payment', /^\/payroll\/special(\/|$)/], ['Payroll.Exemption', /^\/payroll\/exemptions(\/|$)/], ['Payroll.Payslip', /^\/payroll\/(history|bank-file)(\/|$)/],
+  ['Access.Holiday', /^\/ac\/holidays(\/|$)/], ['Access.Groups', /^\/ac\/levels(\/|$)/], ['Access.Combination', /^\/ac\/combos(\/|$)/], ['Access.Privilege', /^\/ac\/privileges(\/|$)/],
+  ['Visitor.Visitor', /^\/visitors(\/blocklist)?\/?$/], ['Visitor.Reason', /^\/visitors\/reasons(\/|$)/], ['Visitor.Transaction', /^\/visitors\/transactions(\/|$)/],
+  ['Meeting.Room', /^\/rooms(\/|$)/], ['Meeting.Meeting', /^\/meetings(\/|$)/],
+  ['MTD.Daily Report', /^\/mtd\/daily(\/|$)/], ['MTD.Department Summary', /^\/mtd\/deptsummary(\/|$)/], ['MTD.Abnormal', /^\/mtd\/abnormal(\/|$)/],
+];
+export const SUBKEYS = SUBS.map(x => x[0]);
+export const subFor = (path) => SUBS.find(([, re]) => re.test(path))?.[0] ?? null;
 const REPORT_MODULE = { leave: 'leave', overtime: 'overtime', payroll: 'payroll' };
 export function moduleFor(path) {
   if (PUBLIC.test(path)) return 'public';
@@ -111,8 +133,10 @@ export function authorize(req, res, next) {
   const role = req.role, perms = permsOf(role);
   const target = moduleFor(req.path);
   if (target === 'admin') { if (role !== 'admin') return res.status(403).json({ error: 'Admin only' }); }
-  else if (target !== 'public' && RANK[perms[target] ?? 'none'] < (req.method === 'GET' ? 1 : 2))
-    return res.status(403).json({ error: req.method === 'GET' ? `No access to ${target}` : (RANK[perms[target]] ? 'Read-only account' : `No access to ${target}`) });
+  else if (target !== 'public') {
+    const sub = subFor(req.path), lv = sub && sub in perms ? perms[sub] : perms[target];
+    if (!levelAllows(lv, req.method)) return res.status(403).json({ error: (lv ?? 'none') === 'none' ? `No access to ${sub ?? target}` : (lv === 'view' ? 'Read-only account' : `Your group may not ${NEED[req.method] ?? 'add'} here`) });
+  }
   if (target === 'public' && req.method !== 'GET' && !(['/password', '/notifications/read', '/dashboard/prefs', '/alerts/prefs', '/alerts/options', '/alerts/watch', '/alerts/test', '/mobile/pair-code'].includes(req.path) || /^\/(alerts\/watch|mobile\/devices|bookmarks)\/\d+$/.test(req.path) || req.path === '/bookmarks')) return res.status(403).json({ error: 'Not allowed' });
   const scope = userScope(req.userRow);
   req.perms = perms;
@@ -130,7 +154,8 @@ export function authorize(req, res, next) {
 
 // ---------- role management (admin only; see moduleFor) ----------
 export const rolesRouter = express.Router();
-const cleanPerms = (p) => { const o = {}; for (const m of MODULES) { const v = p?.[m] ?? 'none'; if (!(v in RANK)) return null; o[m] = v; } return o; };
+const cleanPerms = (p) => { const o = {}; for (const m of MODULES) { const v = p?.[m] ?? 'none'; if (!(v in RANK) && !PART.test(v)) return null; o[m] = v; }
+  for (const k of SUBKEYS) if (p && k in p) { const v = p[k]; if (!(v in RANK) && !PART.test(v)) return null; o[k] = v; } return o; };
 rolesRouter.get('/roles', (_q, res) => {
   res.json(db.prepare('SELECT name, perms, builtin FROM roles ORDER BY builtin DESC, name').all().map(r => ({ name: r.name, builtin: !!r.builtin, perms: permsOf(r.name), users: db.prepare('SELECT COUNT(*) n FROM users WHERE role=?').get(r.name).n })));
 });

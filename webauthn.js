@@ -71,7 +71,7 @@ webauthnRouter.post('/webauthn/register/options', (req, res) => {
   const e = empOf(Number(req.body?.employee_id)); if (!e) return fail(res, 'Choose the employee', 404);
   const c = newChallenge({ type: 'create', employee_id: e.id, fid: Math.max(0, Math.min(9, Number(req.body?.fid) || 0)), label: String(req.body?.label ?? '').slice(0, 60) });
   const ex = db.prepare('SELECT cred_id FROM webauthn_creds WHERE employee_id=?').all(e.id).map(r => ({ type: 'public-key', id: r.cred_id }));
-  res.json({ ...c, rpId: rpOf(req), rpName: 'Optix', user: { id: b64u(String(e.id)), name: e.code, displayName: e.name }, exclude: ex });
+  res.json({ ...c, rpId: rpOf(req), rpName: 'OKT', user: { id: b64u(String(e.id)), name: e.code, displayName: e.name }, exclude: ex });
 });
 webauthnRouter.post('/webauthn/register/verify', (req, res) => {
   try {

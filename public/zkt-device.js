@@ -26,17 +26,22 @@ const DEV_FIELDS={ // arguments some device actions need
   'download-file':[{k:'path',l:'File name on the device',req:true}],
   'set-option':[{k:'name',l:'Option name',req:true},{k:'value',l:'Value'}]};
 const DEV_TITLE={'upload-tx':'Upload Transaction','enroll-remote':'Enroll Remotely','dup-punch':'Duplicate Punch Period','capture-setting':'Capture Setting',upgrade:'Upgrade Firmware',dst:'Daylight Saving Time','punch-state':'Punch State Change Setting','download-file':'Download File','set-option':'Set Option'};
-const DEV_ASK={'clear-attlog':'Delete the punch log stored ON # device(s)?\nPunches already in this system stay.','clear-photo':'Delete the captured images stored ON # device(s)?','clear-admin':'Remove administrator privilege from every known administrator on # device(s)?','clear-all':'Delete ALL users, fingerprints, faces and punches stored ON # device(s)?\nThis cannot be undone on the device.','sync-to-device':'Send every allowed employee to # device(s)? This can be a lot of commands.',reboot:'Restart # device(s) now?'};
+const DEV_ASK={'clear-attlog':'Delete the punch log stored ON # device(s)?\nEvery punch is first copied to this system; if that cannot be confirmed nothing is deleted.','clear-photo':'Delete the captured images stored ON # device(s)?','clear-admin':'Remove administrator privilege from every known administrator on # device(s)?','clear-all':'Delete ALL users, fingerprints, faces and punches stored ON # device(s)?\nThis cannot be undone on the device.','sync-to-device':'Send every allowed employee to # device(s)? This can be a lot of commands.',reboot:'Restart # device(s) now?'};
+const two=()=>{const ids=zsel('dev');if(ids.length!==2){alert('Tick exactly two pull devices (the first ticked is the source, the second the target)');return null}return ids.map(i=>(window.DEVS||[]).find(d=>d.id==i)||{id:i,name:'#'+i})};
+window.devCompare=async()=>{const t=two();if(!t)return;try{const r=await api(`devices/${t[0].id}/compare/${t[1].id}`),n=x=>Array.isArray(x)?x.length:x;
+  alert(`${t[0].name}: ${r.a.users} users, ${r.a.fingerprints} fingerprints\n${t[1].name}: ${r.b.users} users, ${r.b.fingerprints} fingerprints\n\nUsers only on ${t[0].name}: ${n(r.users_only_a)}\nUsers only on ${t[1].name}: ${n(r.users_only_b)}\nFingerprints only on ${t[0].name}: ${n(r.fps_only_a)}\nFingerprints only on ${t[1].name}: ${n(r.fps_only_b)}`)}catch(e){alert(e.message)}};
+window.devCopyFp=async()=>{const t=two();if(!t)return;if(!confirm(`Copy the users and fingerprints of "${t[0].name}" to "${t[1].name}"?`))return;
+  try{const a=await api(`devices/${t[0].id}/read-templates`,'POST',{});const b=await api(`devices/${t[1].id}/sync-bio`,'POST',{});alert(`Read ${a.stored??0} fingerprint(s) from ${t[0].name}. Wrote ${b.fingerprints??0} fingerprint(s) for ${b.employees??0} user(s) to ${t[1].name}.`)}catch(e){alert(e.message)}};
 window.zkDev=async action=>{
   const ids=zsel('dev');if(!ids.length)return alert('Tick at least one device first');
-  const send=async args=>{const r=await api('zkd/devices/action','POST',{ids,action,args});alert(`${r.queued} command(s) queued for ${r.done} device(s)`+(r.skipped?`, ${r.skipped} skipped (only approved push devices take commands)`:'')+'. They go out when the device next checks in; see Device Command.');};
+  const send=async args=>{const r=await api('zkd/devices/action','POST',{ids,action,args});if(r.direct&&!r.done)return alert({'set-time':'The device clock was set to the server time','upload-users':'Users and punches were read from the device','upload-tx':'Users and punches were read from the device','sync-to-device':'The allowed employees were written to the device'}[action]||'The punches were copied to this system and then cleared from the device');alert(`${r.queued} command(s) queued for ${r.done} device(s)`+(r.skipped?`, ${r.skipped} skipped (only approved push devices take commands)`:'')+'. They go out when the device next checks in; see Device Command.');};
   if(DEV_FIELDS[action])return ZK.form(DEV_TITLE[action],DEV_FIELDS[action],{on:'1'},send,'Send');
   if(DEV_ASK[action]&&!confirm(DEV_ASK[action].replace('#',ids.length)))return;
   try{await send({});go(cur)}catch(e){alert(e.message)}};
 {
   ZK.reg('Devices','Device',async()=>{
     const [d,g,br]=await Promise.all([api('devices'),api('device_groups'),api('branches')]);window.DEVS=d;window.DEVG=g;window.DEVB=br;
-    const sel=window.devSel?d.find(x=>x.id===window.devSel):null;let panel='';
+    const sel=null;window.devSel=null;let panel=''; // no side panel: a device opens its edit dialog, like BioTime
     if(sel){const tb=window.devTab||'overview',pf=window.devPf||{};let cm=[],es=[],ex=null;
       if(tb==='queue')[cm,es]=await Promise.all([api(`devices/${sel.id}/commands`),api(`devices/${sel.id}/events`)]);
       else if(tb==='users')ex=await api(`devices/${sel.id}/users`);
@@ -49,11 +54,11 @@ window.zkDev=async action=>{
     return `<h2>Device <span class="cnt">${d.length}</span></h2>
     <div class="ztool"><div class="zgrp">${zb('Add','devForm()')}${zb('Delete',"devBulk('delete')",'zdel')}${zb('New Area','devArea()')}${zb('Clear Pending Command',"devBulk('clear-commands')")}
     ${dd('Data Clean',[['Clear Attendance Data','clear-attlog'],['Clear the captured image','clear-photo'],['Clear administrator privilege','clear-admin'],['Clear All Data','clear-all']])}
-    ${dd('Data Transfer',[['Upload User Data','upload-users'],['Upload Transaction','upload-tx'],['Sync Data to the Device','sync-to-device']])}
-    ${dd('Device Menu',[['Reboot','reboot'],['Read Information','info'],['Enroll Remotely','enroll-remote'],['Duplicate Punch Period','dup-punch'],['Capture Setting','capture-setting'],['Upgrade Firmware','upgrade'],['Daylight Saving Time','dst'],['Punch State Change Setting','punch-state']])}
+    ${ddm('Data Transfer',[['Upload User Data',"zkDev('upload-users')"],['Upload Transaction',"zkDev('upload-tx')"],['Sync Data to the Device',"zkDev('sync-to-device')"],['Compare two devices','devCompare()'],['Copy fingerprints (1st to 2nd)','devCopyFp()']])}
+    ${dd('Device Menu',[['Reboot','reboot'],['Set Time','set-time'],['Read Information','info'],['Enroll Remotely','enroll-remote'],['Duplicate Punch Period','dup-punch'],['Capture Setting','capture-setting'],['Upgrade Firmware','upgrade'],['Daylight Saving Time','dst'],['Punch State Change Setting','punch-state']])}
     ${dd('Maintain',[['Download File','download-file'],['Set Option','set-option']])}</div>
     <div class="zrt"><button class="zi" title="Select all" onclick="zall('dev',true)">&#9745;</button><button class="zi" title="Clear selection" onclick="zall('dev',false)">&#9744;</button><button class="zi" title="Export CSV" onclick="devExport()">&#8681;</button><button class="zi" title="Import CSV" onclick="devImport()">&#8682;</button><button class="zi" title="How to connect" onclick="devGuide()">?</button></div></div>`+
-    tbl([zcol('dev'),['Device Name','name',x=>`<a class="zl" onclick="window.devSel=${x.id};window.devTab='overview';go('Devices')">${esc(x.name)}</a>`],['Serial Number','sn',x=>esc(x.sn||'')],['Area','group_name'],['Device IP','ip',x=>esc(x.ip||'')],['State','online',x=>(x.approved?'':'')+stIcon(x)+(x.approved?'':` <a class="zl" onclick="devSet(${x.id},{approved:true})">Approve</a>`)],['Last Activity','last_seen',x=>esc(x.last_seen||x.last_sync||'')],['User Qty.','user_qty'],['FP Qty.','fp_qty'],['Face Qty.','face_qty'],['Palm Qty.',()=>'0'],['Transaction Qty.','punches'],['Cmd','pending_commands',x=>x.pending_commands||0]],d)+panel},D);
+    tbl([zcol('dev'),['Device Name','name',x=>`<a class="zl" onclick="devForm(${x.id})">${esc(x.name)}</a>`],['Serial Number','sn',x=>esc(x.sn||x.dev_serial||'')],['Area','group_name'],['Device IP','ip',x=>esc(x.ip||'')],['State','online',x=>(x.approved?'':'')+stIcon(x)+(x.approved?'':` <a class="zl" onclick="devSet(${x.id},{approved:true})">Approve</a>`)],['Last Activity','last_seen',x=>esc(x.last_seen||x.last_sync||'')],['User Qty.','user_qty'],['FP Qty.','fp_qty'],['Face Qty.','face_qty'],['Palm Qty.',()=>'0'],['Transaction Qty.','punches'],['Memory','log_count',x=>{if(!x.log_capacity||x.log_count==null)return '';const p=x.log_count*100/x.log_capacity,t=(p>=99.95?100:Math.floor(p*10)/10).toString();return `<span style="color:${p>=90?'#d9232d':'inherit'}" title="${x.log_count} of ${x.log_capacity} punches">${t}%</span>`}],['Clock','clock_diff_s',x=>{if(x.clock_diff_s==null)return '';const m=Math.round(x.clock_diff_s/60);return Math.abs(m)<=2?'OK':`<span style="color:#d9232d">${m>0?'+':''}${m} min</span>`}],['Cmd','pending_commands',x=>x.pending_commands||0]],d)+panel},D);
 }
 
 // ---------- Device Command / Command Log ----------
@@ -129,12 +134,13 @@ ZK.grid('zk:biophoto','Bio-Photo',{module:D,load:()=>api('zkd/biophotos'),api:'z
     ['Import Bio-Photo',async c=>{const fs=await U.pick('image/jpeg,image/png',true);if(!fs.length)return;let ok=0;const bad=[];for(const f of fs){const code=f.name.replace(/\.[^.]+$/,'').split(/[_\s]/)[0];try{await api('zkd/biophotos','POST',{code,bio_photo:await readFile(f)});ok++}catch(e){bad.push(f.name+' ('+e.message+')')}}alert(`${ok} imported`+(bad.length?'\nNot imported (file name = Employee ID):\n'+bad.slice(0,6).join('\n'):''));c.reload()}]]});
 
 // ---------- Transaction ----------
+window.zkTxPic=async id=>{try{const r=await fetch(`/api/punch-photo/${id}`,{headers:{Authorization:'Bearer '+T}});if(!r.ok)throw new Error('No photo');window.open(URL.createObjectURL(await r.blob()))}catch(e){alert(e.message)}};
 window.zkTxFilter=()=>{window.txf={from:val('tx_f'),to:val('tx_t'),q:val('tx_q')};go('zk:transaction')};
 ZK.grid('zk:transaction','Transaction',{module:D,
   get note(){const f=window.txf||{from:addD(today(),-6),to:today(),q:''};return `<div class="fbar" style="margin:6px 0"><input id="tx_q" placeholder="Employee ID or name" value="${E(f.q||'')}"><input id="tx_f" type="date" value="${E(f.from)}"><input id="tx_t" type="date" value="${E(f.to)}"><button onclick="zkTxFilter()">Search</button></div>`},
   load:()=>{const f=window.txf||{};return api('zkd/transactions?'+new URLSearchParams(Object.entries(f).filter(x=>x[1])))},
   remove:id=>api('zkd/transactions/delete','POST',{ids:[id]}),
-  cols:[['Employee ID','code'],['First Name','name'],['Department','dept'],['Date',r=>r.ts.slice(0,10)],['Time',r=>r.ts.slice(11)],['Punch State','state'],['Area Name','area'],['Serial Number','sn'],['Device Name','device'],['Upload Time','uploaded']],
+  cols:[['Employee ID','code'],['First Name','name'],['Last Name','last_name'],['Department','dept'],['Position','position'],['Date',r=>`<span style="white-space:nowrap">${r.ts.slice(0,10)}</span>`,{html:true}],['Time',r=>`<span style="white-space:nowrap">${r.ts.slice(11)}</span>`,{html:true}],['Punch State','state'],['Verification Type','verify_type'],['Work Code','workcode'],['Area Name','area'],['Serial Number','sn'],['Device Name','device'],['GPS',r=>r.latitude!=null?`<a class="zl" target="_blank" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">Map</a>`:'',{html:true}],['Longitude','longitude'],['Latitude','latitude'],['Capture',r=>r.photo_id?`<a class="zl" onclick="zkTxPic(${r.photo_id})">View</a>`:'',{html:true}],['With Mask','with_mask'],['Temperature',r=>r.temp_c!=null?r.temp_c+' °C':''],['Upload Time','uploaded']],
   acts:[['Add',()=>ZK.form('Add Transaction',[{k:'emp',l:'Employee',t:'select',opts:async()=>(await api('employees?status=active')).map(e=>[e.code,e.code+' - '+e.name]),req:true},{k:'ts',l:'Punch time',t:'datetime',req:true}],{ts:new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16).replace('T',' ')},async b=>{const r=await api('logs/manual','POST',{emp_code:b.emp,ts:b.ts});if(!r.added)throw new Error('This punch already exists')})],['Delete'],
     ['Upload USB Transactions',async c=>{const fs=await U.pick('.csv,.txt,.dat,text/csv');if(!fs[0])return;const r=await api('logs/import','POST',{csv:await fs[0].text()});alert(`${r.parsed} line(s) read, ${r.added} new punch(es) added`);c.reload()}],
     ['Download Attendance Photo',()=>ZK.form('Download Attendance Photo',[{k:'from',l:'From date',t:'date'},{k:'to',l:'To date',t:'date'}],{from:addD(today(),-6),to:today()},async b=>{const r=await api('zkd/transactions/photos','POST',b);alert(`Asked ${r.devices} device(s) to upload their attendance photos`)},'Request')]]});
@@ -174,15 +180,25 @@ ZK.grid('zk:appnotice','Notice',{module:'employees',load:()=>api('zkd/app/notice
   save:b=>api('zkd/app/notices','POST',{employee_id:b.employee_id?+b.employee_id:null,category:b.category,title:b.title,body:b.body})});
 ZK.grid('zk:applog','Mobile Operation Log',{module:'employees',load:()=>api('zkd/app/log'),
   remove:id=>api('zkd/app/log/delete','POST',{ids:[id]}),
-  cols:[['User','user'],['Request Time','ts'],['Path','path'],['Method','method'],['Remote Address','ip'],['Status','status'],['Time',r=>r.ms+' ms']],
+  cols:[['User','user'],['Request Time','ts'],['Path','path'],['Query Params','query'],['Method','method'],['Remote Address','ip'],['Status','status'],['Time',r=>r.ms+' ms'],['Errors','error']],
   fields:[{k:'user',l:'User'},{k:'path',l:'Path',req:true},{k:'method',l:'Method'},{k:'ip',l:'Remote Address'},{k:'status',l:'Status',t:'number'}],
   save:b=>api('zkd/app/log','POST',b)});
 
 // ---------- Geo-fence ----------
 ZK.grid('Locations','Location Setup',{module:'organization',load:()=>api('zkd/geo/locations'),api:'zkd/geo/locations',
   cols:[['Alias','alias',{link:true}],['Location','location'],['Longitude','lng'],['Latitude','lat']],
-  fields:[{k:'alias',l:'Alias',req:true},{k:'location',l:'Location'},{k:'lng',l:'Longitude',t:'number',req:true},{k:'lat',l:'Latitude',t:'number',req:true},{k:'radius_m',l:'Radius (m)',t:'number',hint:'Default 150'}],
+  fields:[{k:'alias',l:'Alias',req:true},{k:'location',l:'Location'},{k:'lat',l:'Latitude',t:'number',req:true},{k:'lng',l:'Longitude',t:'number',req:true},{k:'radius_m',l:'Radius (m)',t:'number',hint:'Default 150'}],
   defaults:{radius_m:150},save:(b,row)=>{const body={alias:b.alias,location:b.location||'',lng:b.lng,lat:b.lat,...(b.radius_m!=null?{radius_m:b.radius_m}:{})};return api(row?'zkd/geo/locations/'+row.id:'zkd/geo/locations',row?'PUT':'POST',body)}});
+{const orig=ZK.edit;ZK.edit=async(key,id)=>{const r=await orig(key,id);if(key!=='Locations')return r;
+  await new Promise(x=>setTimeout(x,200));const g=document.querySelector('#dvm .om .grid');if(!g)return r;g.style.gridTemplateColumns='1fr 1fr';g.querySelectorAll('label').forEach(l=>{const t=l.querySelector('.lt')?.textContent||'';if(/Alias|Location/.test(t)&&!/tude/.test(t))l.style.gridColumn='1 / -1'});
+  const box=document.createElement('div');box.style.cssText='grid-column:1 / -1;height:230px;background:#e8eef2;border:1px solid #ddd;display:flex;align-items:center;justify-content:center;color:#888;font-size:12px';box.textContent='Loading map…';g.appendChild(box);
+  const ld=(u,css)=>new Promise((ok,no)=>{const e=document.createElement(css?'link':'script');if(css)e.rel='stylesheet';e[css?'href':'src']=u;e.onload=ok;e.onerror=no;document.head.appendChild(e)});
+  try{if(!window.L){await ld('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',1);await ld('https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js')}
+    box.textContent='';const la=document.getElementById('zf_lat'),ln=document.getElementById('zf_lng'),p=[Number(la.value)||24.8607,Number(ln.value)||67.0011],map=L.map(box).setView(p,la.value?15:5);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);let mk=la.value?L.marker(p).addTo(map):null;
+    map.on('click',e=>{la.value=e.latlng.lat.toFixed(6);ln.value=e.latlng.lng.toFixed(6);mk?mk.setLatLng(e.latlng):mk=L.marker(e.latlng).addTo(map)});setTimeout(()=>map.invalidateSize(),200)}
+  catch{box.textContent='Map needs internet access – type the latitude and longitude instead'}
+  return r}}
 const siteOpts=async()=>(await api('geo_sites')).map(s=>[s.id,s.name]);
 const gpsCols=[['Location','location'],['Distance',r=>r.distance==null?'':r.distance+' m'],['Start Date','start_date'],['End Date','end_date']];
 const gpsFields=[{k:'site_id',l:'Location',t:'select',opts:siteOpts,req:true},{k:'distance',l:'Distance (m)',t:'number'},{k:'start_date',l:'Start Date',t:'date'},{k:'end_date',l:'End Date',t:'date'}];
@@ -192,7 +208,7 @@ ZK.grid('zk:gpsdept','Department Setup',{module:'organization',load:()=>api('zkd
   fields:[{k:'department_id',l:'Department',t:'select',opts:async()=>(await api('departments')).map(d=>[d.id,d.name]),req:true},...gpsFields],save:(b,row)=>api(row?'zkd/geo/dept/'+row.id:'zkd/geo/dept',row?'PUT':'POST',{...b,department_id:+b.department_id,site_id:+b.site_id})});
 
 // ---------- Device Configurations ----------
-window.zkCfgSave=async apply=>{const m=document.getElementById('dcm');try{await api('zkd/config','PUT',{zkd_delay:+val('dc_delay'),zkd_error_delay:+val('dc_err'),zkd_realtime:+val('dc_rt'),zkd_auto_approve:+val('dc_auto'),zkd_timezone:val('dc_tz'),device_offline_min:+val('dc_off'),store_templates:+val('dc_tpl')});let t='Saved';if(apply){const r=await api('zkd/config/apply','POST');t=`Saved and applied to ${r.devices} device(s)`}m.innerHTML=`<span style="color:var(--ok)">${t}</span>`}catch(e){m.innerHTML=`<span class="err">${E(e.message)}</span>`}};
+window.zkCfgSave=async apply=>{const m=document.getElementById('dcm');try{await api('zkd/config','PUT',{zkd_delay:+val('dc_delay'),zkd_error_delay:+val('dc_err'),zkd_realtime:+val('dc_rt'),zkd_auto_approve:+val('dc_auto'),zkd_timezone:val('dc_tz'),device_offline_min:+val('dc_off'),monitor_refresh_sec:+val('dc_mon'),store_templates:+val('dc_tpl')});let t='Saved';if(apply){const r=await api('zkd/config/apply','POST');t=`Saved and applied to ${r.devices} device(s)`}m.innerHTML=`<span style="color:var(--ok)">${t}</span>`}catch(e){m.innerHTML=`<span class="err">${E(e.message)}</span>`}};
 ZK.reg('zk:devcfg','Configurations',async()=>{const c=await api('zkd/config'),sel=(id,v,o)=>`<select id="${id}">${o.map(x=>`<option value="${x[0]}" ${String(v)===String(x[0])?'selected':''}>${x[1]}</option>`).join('')}</select>`;
   return `<h2>Configurations</h2><div class="card" style="max-width:760px"><h3 style="margin-top:0">Device defaults</h3><div class="grid">
    <label>Upload interval (seconds)<input id="dc_delay" type="number" min="1" max="3600" value="${c.zkd_delay}"><small class="mut">How often a push device checks in for commands.</small></label>
@@ -201,6 +217,7 @@ ZK.reg('zk:devcfg','Configurations',async()=>{const c=await api('zkd/config'),se
    <label>Approve new devices automatically${sel('dc_auto',c.zkd_auto_approve,[[0,'No, wait for approval'],[1,'Yes']])}</label>
    <label>Default time zone<input id="dc_tz" value="${E(c.zkd_timezone)}" placeholder="e.g. Asia/Karachi"></label>
    <label>Show a device as offline after (minutes)<input id="dc_off" type="number" min="1" max="1440" value="${c.device_offline_min}"></label>
+   <label>Real-Time Monitor refresh (seconds)<input id="dc_mon" type="number" min="3" max="3600" value="${c.monitor_refresh_sec||10}"><small class="mut">How often the dashboard reloads punches and device status.</small></label>
    <label>Keep fingerprint and face templates${sel('dc_tpl',c.store_templates,[[0,'No (only count them)'],[1,'Yes (encrypted)']])}<small class="mut">Needed to copy templates from one device to another.</small></label></div>
    <div class="bar"><button onclick="zkCfgSave(false)">Save</button><button class="g" onclick="zkCfgSave(true)">Save and apply to all devices</button><span id="dcm"></span></div></div>`},D);
 })();

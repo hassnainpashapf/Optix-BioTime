@@ -17,7 +17,7 @@ try {
   assert.deepEqual((await api('zkp/employees/extra-options')).emp_types, ['Official', 'Temporary', 'Probation']);
   await api(`zkp/employees/${A.id}/extra`, 'PUT', { nationality: 'Pakistani', emp_type: 'Probation' });
   assert.equal((await api('zkp/employees')).find(r => r.id === A.id).nationality, 'Pakistani');
-  assert.deepEqual(await api(`zkp/employees/${A.id}/extra`), { nationality: 'Pakistani', emp_type: 'Probation' });
+  { const x = await api(`zkp/employees/${A.id}/extra`); assert.deepEqual({ nationality: x.nationality, emp_type: x.emp_type }, { nationality: 'Pakistani', emp_type: 'Probation' }); }
 
   // ---- bulk transfer (department / position / area) with history
   await assert.rejects(api('zkp/employees/transfer', 'POST', { kind: 'x', to_id: d1, employee_ids: [B.id] }), /department, position or area/);

@@ -1,4 +1,4 @@
-# Optix
+# OKT
 
 Attendance, shifts, leave, overtime and payroll for ZKTeco-type biometric devices. Node 24+ (uses built-in SQLite), no build step.
 

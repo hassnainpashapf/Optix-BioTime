@@ -107,6 +107,23 @@ try {
   assert.equal((await mgr.get('employees')).body.length >= 4, true);
   await api('users/' + mgrId, 'PUT', { departments: [sales] });
   assert.deepEqual((await mgr.get('employees')).body.map(e => e.name), ['Sales One']);
+  // action-level group: may view and add organization records but not change or delete them
+  await api('roles', 'POST', { name: 'adder', perms: { organization: 'view+add' } });
+  await mkUser('adder1', 'adder'); const ad = await T('adder1');
+  const dep = await ad.send('org/departments', 'POST', { name: 'Adder Dept' }); assert.equal(dep.status, 200, 'Add is allowed');
+  assert.equal((await ad.send('org/departments/' + dep.body.id, 'PUT', { name: 'X' })).status, 403, 'Change is refused');
+  assert.equal((await ad.send('org/departments/' + dep.body.id, 'DELETE')).status, 403, 'Delete is refused');
+  assert.equal((await ad.get('org/departments')).status, 200);
+  // one page inside a module: Payroll.Special Payment may be added to while the rest of Payroll is view-only; another group sees only Payroll.Formula
+  await api('roles', 'POST', { name: 'pg', perms: { payroll: 'view', 'Payroll.Special Payment': 'view+add' } });
+  await mkUser('pg1', 'pg'); const pg = await T('pg1');
+  assert.equal((await pg.send('payroll/special', 'POST', { name: 'Eid gift' })).status, 200, 'the page level allows Add'); assert.equal((await pg.send('payroll/formulas', 'POST', { name: 'x' })).status, 403, 'other pages stay view-only');
+  assert.equal((await pg.get('payroll/formulas')).status, 200);
+  await api('roles', 'POST', { name: 'pg2', perms: { payroll: 'none', 'Payroll.Formula': 'view' } });
+  await mkUser('pg2u', 'pg2'); const p2 = await T('pg2u');
+  assert.equal((await p2.get('payroll/formulas')).status, 200); assert.equal((await p2.get('payroll/special')).status, 403, 'a page not ticked is closed');
+  assert.equal((await S.raw('roles', 'POST', { name: 'bad', perms: { 'Payroll.Nope': 'edit' } }, S.token)).status, 200, 'unknown page keys are dropped'); assert.equal((await api('roles')).find(r => r.name === 'bad').perms['Payroll.Nope'], undefined);
+  assert.ok((await api('zk/subpages')).includes('Payroll.Formula'));
   // roles can be deleted once nobody uses them
   const nobId = (await api('users')).find(u => u.username === 'nobody').id; await api('users/' + nobId, 'DELETE');
   await api('roles/nobody', 'DELETE');

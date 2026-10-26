@@ -151,6 +151,8 @@ CREATE TABLE IF NOT EXISTS wf_progress(kind TEXT NOT NULL, ref_id INTEGER NOT NU
 db.exec(`CREATE TABLE IF NOT EXISTS breaks(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, start TEXT NOT NULL, end TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS pay_codes(status TEXT PRIMARY KEY, code TEXT NOT NULL, pay_factor REAL NOT NULL DEFAULT 1, label TEXT);`);
 addCol('shifts', 'break_id', 'INTEGER');
+addCol('shifts', 'pattern', 'TEXT');
+addCol('shifts', 'child_of', 'INTEGER');
 for (const r of [['Present', 'P', 1], ['Late', 'LT', 1], ['Half Day', 'HD', 0.5], ['Absent', 'A', 0], ['Leave', 'LV', 1], ['Unpaid Leave', 'UL', 0], ['Weekly Off', 'W', 1], ['Holiday', 'H', 1], ['On Duty', 'OD', 1], ['Work From Home', 'WFH', 1],
   ['Training', 'TR', 1], ['Missing Out', 'MO', 1], ['Short Hours', 'SH', 1], ['In progress', 'IP', 1], ['Pending', '-', 1]])
   db.prepare('INSERT OR IGNORE INTO pay_codes(status, code, pay_factor) VALUES(?,?,?)').run(...r);
@@ -169,11 +171,14 @@ CREATE INDEX IF NOT EXISTS emp_salary_e ON emp_salary(employee_id, effective_fro
 CREATE TABLE IF NOT EXISTS tax_slabs(id INTEGER PRIMARY KEY, lower REAL NOT NULL, upper REAL, fixed REAL NOT NULL DEFAULT 0, rate REAL NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS payroll_meta(key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE IF NOT EXISTS payroll_approvals(month TEXT PRIMARY KEY, status TEXT NOT NULL, submitted_by TEXT, submitted_at TEXT, decided_by TEXT, decided_at TEXT, note TEXT, hash TEXT);`);
-// Default salaried-individual slabs (annual income, Rs). These are starting values: check them against the current FBR schedule in Payroll > Tax and contributions.
-if (!db.prepare('SELECT 1 FROM tax_slabs').get()) {
-  for (const r of [[0, 600000, 0, 0], [600000, 1200000, 0, 1], [1200000, 2200000, 6000, 11], [2200000, 3200000, 116000, 23], [3200000, 4100000, 346000, 30], [4100000, null, 616000, 35]])
-    db.prepare('INSERT INTO tax_slabs(lower, upper, fixed, rate) VALUES(?,?,?,?)').run(...r);
-  db.prepare("INSERT OR IGNORE INTO payroll_meta(key, value) VALUES('tax_year', '2025-26 (starting values, please verify)')").run();
+// Default salaried-individual slabs (annual income, Rs): the FY 2026-27 schedule as published by tax advisers. They are starting values: check them against the current FBR schedule in Payroll > Tax and contributions.
+const SLABS_2627 = [[0, 600000, 0, 0], [600000, 1200000, 0, 1], [1200000, 2200000, 6000, 11], [2200000, 3200000, 116000, 20], [3200000, 4100000, 316000, 25], [4100000, 5600000, 541000, 29], [5600000, 7000000, 976000, 32], [7000000, null, 1424000, 35]];
+const SLABS_2526 = [[0, 600000, 0, 0], [600000, 1200000, 0, 1], [1200000, 2200000, 6000, 11], [2200000, 3200000, 116000, 23], [3200000, 4100000, 346000, 30], [4100000, null, 616000, 35]];
+const putSlabs = (rows, label) => { db.exec('DELETE FROM tax_slabs'); for (const r of rows) db.prepare('INSERT INTO tax_slabs(lower, upper, fixed, rate) VALUES(?,?,?,?)').run(...r); db.prepare("INSERT INTO payroll_meta(key, value) VALUES('tax_year', ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").run(label); };
+if (!db.prepare('SELECT 1 FROM tax_slabs').get()) putSlabs(SLABS_2627, '2026-27 (starting values, please verify)');
+else { // a database still holding the untouched 2025-26 starting values moves to the current schedule; anything the admin edited stays
+  const cur = JSON.stringify(db.prepare('SELECT lower, upper, fixed, rate FROM tax_slabs ORDER BY lower').all().map(r => [r.lower, r.upper, r.fixed, r.rate]));
+  if (cur === JSON.stringify(SLABS_2526)) putSlabs(SLABS_2627, '2026-27 (starting values, please verify)');
 }
 // ---- automation rules: when <trigger> and <conditions> then <actions>
 db.exec(`CREATE TABLE IF NOT EXISTS automations(id INTEGER PRIMARY KEY, name TEXT NOT NULL, enabled INTEGER DEFAULT 1, trigger TEXT NOT NULL, config TEXT NOT NULL DEFAULT '{}', actions TEXT NOT NULL DEFAULT '[]',
@@ -195,6 +200,21 @@ db.exec(`CREATE TABLE IF NOT EXISTS att_policies(id INTEGER PRIMARY KEY, name TE
 for (const t of ['employees', 'departments', 'emp_groups', 'branches']) addCol(t, 'att_policy_id', 'INTEGER'); // offline after this many minutes (push devices); empty = the global setting
 addCol('devices', 'alert_off', 'INTEGER DEFAULT 0'); // 1 = no notifications for this device
 addCol('logs', 'mask', 'INTEGER');
+db.exec("DELETE FROM logs WHERE emp_code='' OR ts<'2001-01-02'"); try { db.exec("DELETE FROM employees WHERE code=''"); } catch {} // junk records an earlier read took from a device's empty slots
+addCol('logs', 'state', 'INTEGER');
+for (const c of ['f_deduction', 'f_exception', 'f_increment', 'f_leave', 'f_overtime']) addCol('emp_salary', c, 'INTEGER'); // the formulas a salary structure uses (Payroll > Formula)
+addCol('employees', 'updated', 'TEXT'); // when the record last changed (Employee > Update Time)
+db.exec("CREATE TRIGGER IF NOT EXISTS emp_touch_ins AFTER INSERT ON employees BEGIN UPDATE employees SET updated=datetime('now','localtime') WHERE id=NEW.id; END; CREATE TRIGGER IF NOT EXISTS emp_touch_upd AFTER UPDATE ON employees WHEN NEW.updated IS OLD.updated BEGIN UPDATE employees SET updated=datetime('now','localtime') WHERE id=NEW.id; END;");
+db.exec("UPDATE employees SET updated=COALESCE(join_date || ' 00:00:00', datetime('now','localtime')) WHERE updated IS NULL"); // people saved before this existed
+for (const [c, d] of [['verify', 'INTEGER'], ['workcode', 'TEXT'], ['lat', 'REAL'], ['lng', 'REAL']]) addCol('logs', c, d); // how the person was verified (device code), the work code they chose, and where a phone punch was made
+for (const [c, d] of [['enable_att', 1], ['enable_schedule', 1], ['enable_holiday', 1], ['enable_ot', 1], ['enable_comp', 0]]) addCol('employees', c, `INTEGER DEFAULT ${d}`); // Employee > Attendance Settings switches // the device's punch code: 0 Check In, 1 Check Out, 2 Break Out, 3 Break In, 4 Overtime In, 5 Overtime Out (empty = not reported)
+addCol('devices', 'log_count', 'INTEGER'); // punches the device held at the last full read: unchanged = nothing new to read
+addCol('devices', 'log_capacity', 'INTEGER');
+addCol('devices', 'dev_serial', 'TEXT'); // serial number the device reports itself (pull devices)
+addCol('devices', 'dev_fp', 'INTEGER'); addCol('devices', 'dev_face', 'INTEGER'); // fingerprints and faces the device itself reports (pull devices) // how many punches the device can hold
+addCol('devices', 'clock_diff_s', 'INTEGER'); // device clock minus server clock, seconds, at the last read
+addCol('devices', 'brand', 'TEXT'); addCol('devices', 'dev_user', 'TEXT'); addCol('devices', 'dev_pass', 'BLOB'); // other brands: Hikvision / Dahua / Suprema (BioStar 2), reached by their network API
+addCol('devices', 'comm_key', 'TEXT'); // the device's Comm Key (password) for pull mode; empty = none
 addCol('devices', 'att_device', 'INTEGER DEFAULT 1'); // 0 = access-control only: its punches are not used for attendance
 db.exec(`
 CREATE TABLE IF NOT EXISTS visitors(id INTEGER PRIMARY KEY, name TEXT NOT NULL, company TEXT, phone TEXT, id_no TEXT, purpose TEXT, host_id INTEGER REFERENCES employees(id) ON DELETE SET NULL,
@@ -210,6 +230,14 @@ CREATE TABLE IF NOT EXISTS meeting_attendees(meeting_id INTEGER NOT NULL REFEREN
   rsvp TEXT DEFAULT 'pending', attended INTEGER, PRIMARY KEY(meeting_id, employee_id));
 CREATE TABLE IF NOT EXISTS notification_rules(id INTEGER PRIMARY KEY, kind TEXT UNIQUE NOT NULL, title TEXT NOT NULL, enabled INTEGER DEFAULT 0, at TEXT NOT NULL, email INTEGER DEFAULT 0, last_run TEXT);`);
 addCol('rooms', 'device_id', 'INTEGER');
+addCol('rooms', 'remark', 'TEXT');
+// the rest of BioTime's Meeting form: topic, time zone, purpose, approval, Zoom switches and the check-in / check-out windows
+for (const [c, t] of [['topic', 'TEXT'], ['timezone', "TEXT DEFAULT 'Asia/Karachi'"], ['online', 'INTEGER DEFAULT 0'], ['purpose', 'TEXT'], ['auto_approved', 'INTEGER DEFAULT 1'], ['approval_status', "TEXT DEFAULT 'Approved'"], ['approval_comment', 'TEXT'], ['approver', 'TEXT'], ['approved_at', 'TEXT'],
+  ['waiting_room', 'INTEGER DEFAULT 0'], ['join_before_host', 'INTEGER DEFAULT 0'], ['auto_recording', "TEXT DEFAULT 'none'"], ['mute_entry', 'INTEGER DEFAULT 0'], ['host_video', 'INTEGER DEFAULT 0'], ['participant_video', 'INTEGER DEFAULT 0'],
+  ['zoom_id', 'TEXT'], ['join_url', 'TEXT'], ['start_url', 'TEXT'], ['zoom_user', 'TEXT'],
+  ['checkin_required', 'INTEGER DEFAULT 0'], ['checkin_start', 'TEXT'], ['checkin_end', 'TEXT'], ['checkout_required', 'INTEGER DEFAULT 0'], ['checkout_start', 'TEXT'], ['checkout_end', 'TEXT']]) addCol('meetings', c, t);
+db.exec(`CREATE TABLE IF NOT EXISTS meeting_manual_logs(id INTEGER PRIMARY KEY, meeting_id INTEGER NOT NULL REFERENCES meetings(id) ON DELETE CASCADE, employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE, punch_ts TEXT NOT NULL, state TEXT DEFAULT 'Check In', reason TEXT,
+  status TEXT DEFAULT 'Pending', comment TEXT, decided_by TEXT, decided_at TEXT, created TEXT DEFAULT (datetime('now','localtime')), created_by TEXT);`);
 for (const r of [['absent_summary', 'Daily summary of who is not in yet (to admins)', '11:00'], ['late_alert', 'Late arrivals today (to each person\'s manager)', '10:30'],
   ['missing_punch', 'Reminder to employees who forgot to punch out yesterday', '09:00'], ['leave_pending', 'Leave requests waiting more than 2 days (to managers and admins)', '09:30']])
   db.prepare('INSERT OR IGNORE INTO notification_rules(kind, title, at) VALUES(?,?,?)').run(...r);
@@ -226,6 +254,8 @@ CREATE INDEX IF NOT EXISTS wh_due ON webhook_deliveries(status, next_try);`);
 db.exec(`
 CREATE UNIQUE INDEX IF NOT EXISTS emp_card ON employees(card_no) WHERE card_no IS NOT NULL;
 CREATE TABLE IF NOT EXISTS device_groups(id INTEGER PRIMARY KEY, name TEXT UNIQUE NOT NULL, branch_id INTEGER);
+CREATE TABLE IF NOT EXISTS punch_photos(id INTEGER PRIMARY KEY, device_id INTEGER REFERENCES devices(id) ON DELETE CASCADE, emp_code TEXT NOT NULL, ts TEXT NOT NULL, data BLOB NOT NULL, UNIQUE(device_id, emp_code, ts)); -- the picture a device takes at each punch (push devices upload it)
+CREATE INDEX IF NOT EXISTS ix_punch_photos ON punch_photos(emp_code, ts);
 CREATE TABLE IF NOT EXISTS device_events(id INTEGER PRIMARY KEY, device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE, ts TEXT DEFAULT (datetime('now','localtime')), kind TEXT NOT NULL, detail TEXT);
 CREATE INDEX IF NOT EXISTS dev_ev ON device_events(device_id, id);
 CREATE TABLE IF NOT EXISTS biodata(id INTEGER PRIMARY KEY, employee_id INTEGER NOT NULL REFERENCES employees(id) ON DELETE CASCADE, kind TEXT NOT NULL, fid INTEGER NOT NULL DEFAULT 0,
@@ -279,8 +309,15 @@ export const DEFAULTS = {
   ot_approval: 0,          // 1 = overtime is paid only after it is approved
   ot_daily_max_min: 0,     // overtime cap per day in minutes (0 = no cap)
   ot_monthly_max_min: 0,   // overtime cap per month in minutes (0 = no cap)
-  temp_alert_c: 37.5,      // a body temperature reported by a device at or above this raises an alert (0 = off)
+  mtd_unit: 0,             // temperature shown in: 0 = °C, 1 = °F
+  mtd_temp_alarm: 1,       // 1 = a high temperature raises an alert
+  mtd_mask_alarm: 1,       // 1 = a punch without a mask counts as abnormal
+  temp_alert_c: 37.3,      // a body temperature reported by a device at or above this raises an alert (0 = off)
   visitor_max_hours: 8,    // a visitor still signed in after this many hours is shown as overstaying
+  monitor_refresh_sec: 10, // the dashboard's Real-Time Monitor reloads this often (kept here so every screen follows the server)
+  photo_keep_days: 90,     // punch photos older than this are deleted (0 = keep forever)
+  comp_hours_per_day: 8,   // compensatory time off: this many overtime hours earn one day off (employees with Enable Compensatory = Yes)
+  comp_expiry_days: 90,    // overtime older than this no longer earns time off (0 = never expires)
   pull_sync_min: 2,        // devices added by IP and port (pull) are read by the server every this many minutes (0 = only when you press Sync)
   device_offline_min: 5,   // a device that has not contacted the server for this many minutes is shown as offline
   store_templates: 0,      // 1 = keep fingerprint/face templates reported by devices (encrypted) so they can be copied to other devices
@@ -290,13 +327,14 @@ export const DEFAULTS = {
   tax_enabled: 0,          // 1 = income tax is deducted from salary using the slabs (employees marked tax exempt are skipped)
   tax_surcharge_over: 10000000, // annual taxable income above this adds a surcharge on the tax
   tax_surcharge_pct: 9,    // surcharge, percent of the tax
-  eobi_wage: 40000,        // wage EOBI contributions are calculated on (the minimum wage)
+  eobi_wage: 40700,        // wage EOBI contributions are calculated on (the minimum wage; set the figure for your province)
   eobi_rate_employee: 1,   // EOBI, percent of that wage paid by the employee (deducted)
   eobi_rate_employer: 5,   // EOBI, percent paid by the employer (company cost, not deducted)
   sessi_rate: 6, sessi_ceiling: 40000,   // Sindh social security (employer share): percent of wages up to this ceiling
   emp_id_numeric: 0,       // 1 = employee IDs must be numbers
   emp_id_ordered: 0,       // 1 = new employee IDs continue the number sequence (cannot skip or be below the highest)
   pessi_rate: 6, pessi_ceiling: 40000,   // Punjab social security (employer share)
+  slip_day: 0,             // payslips reach the employee portal on this day of the month after the pay month (0 = as soon as the month is finalized)
 };
 export function getSettings() {
   const o = { ...DEFAULTS };

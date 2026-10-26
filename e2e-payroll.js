@@ -32,11 +32,11 @@ try {
   await api('payroll/salary/' + D.id, 'POST', { effective_from: cur, basic: 60000, components: [{ name: 'House rent', amount: 25000, taxable: true }, { name: 'Conveyance', amount: 15000, taxable: false }] });
 
   // ---- income tax slabs
-  const rates = await api('payroll/rates'); assert.equal(rates.slabs.length, 6); assert.equal(rates.settings.tax_enabled, 0);
-  assert.deepEqual(await api('payroll/tax-calc?monthly=100000'), { annual_income: 1200000, annual_tax: 6000, monthly_tax: 500 }); near((await api('payroll/tax-calc?annual=12000000')).annual_tax, 3685290);
+  const rates = await api('payroll/rates'); assert.equal(rates.slabs.length, 8); assert.equal(rates.settings.tax_enabled, 0);
+  assert.deepEqual(await api('payroll/tax-calc?monthly=100000'), { annual_income: 1200000, annual_tax: 6000, monthly_tax: 500 }); near((await api('payroll/tax-calc?annual=12000000')).annual_tax, 3459660);
   await api('payroll/rates', 'PUT', { settings: { tax_enabled: 1 } });
   r = await row(A.code); near(r.tax, 500); near(r.net, 99500); near(r.taxable_income, 100000);
-  near((await row(B.code)).tax, 38833.33); near((await row(C.code)).tax, 307107.5, 0.02);
+  near((await row(B.code)).tax, 34666.67); near((await row(C.code)).tax, 288305, 0.02);
   r = await row(D.code); near(r.taxable_income, 85000, 0.01); near(r.tax, 350); // conveyance (15,000) is not taxable: 1,020,000 a year = 1% of 420,000 = 4,200, so 350 a month
   await api('payroll/employee/' + A.id, 'PUT', { tax_exempt: true }); r = await row(A.code); assert.equal(r.tax, 0); near(r.net, 100000);
   // editing the slabs
@@ -49,6 +49,7 @@ try {
 
   // ---- EOBI and social security
   await api('payroll/employee/' + E.id, 'PUT', { eobi: true, social_scheme: 'SESSI', eobi_no: 'E-1', cnic: '35202-1234567-1' }); await assert.rejects(api('payroll/employee/' + E.id, 'PUT', { social_scheme: 'XYZ' }), /SESSI, PESSI/); await assert.rejects(api('payroll/employee/' + E.id, 'PUT', { cnic: '123' }), /CNIC/);
+  await api('payroll/rates', 'PUT', { settings: { eobi_wage: 40000 } });
   r = await row(E.code); assert.equal(r.eobi_employee, 400); assert.equal(r.eobi_employer, 2000); assert.equal(r.social_employer, 2400, '6% of 40,000: the ceiling applies below the salary'); near(r.net, 50000 - 400 - r.tax);
   await api('payroll/rates', 'PUT', { settings: { eobi_wage: 37000 } }); assert.equal((await row(E.code)).eobi_employee, 370);
   await api('payroll/employee/' + E.id, 'PUT', { social_scheme: 'PESSI' }); assert.equal((await row(E.code)).social_employer, 2400);
@@ -89,6 +90,16 @@ try {
   // permissions
   await api('users', 'POST', { username: 'viewer3', password: 'password1', role: 'viewer' }); const vt = await S.login('viewer3', 'password1');
   assert.equal((await S.raw('payroll/salary/' + A.id, 'POST', { effective_from: cur, basic: 5 }, vt)).status, 403); assert.equal((await S.raw('payroll/history', 'GET', undefined, vt)).status, 403, 'the viewer role has no payroll access');
+  // custom period: the full month gives the month's figures, a part gives a part, bad dates are refused
+  { const last = M + '-' + String(days).padStart(2, '0'), mid = M + '-15', whole = (await api(`report/payroll?from=${first}&to=${last}`)).rows, mon = (await api('report/payroll?month=' + M)).rows;
+    assert.equal(whole.length, mon.length);
+    const half = (await api(`report/payroll?from=${first}&to=${mid}`)).rows; assert.equal(half[0].period_to, mid); assert.ok(half.every((r, k) => r.base <= mon[k].base + 0.01 && r.working_days <= mon[k].working_days), 'half a month pays no more than the month');
+    const nxt = M + '-16', h2 = (await api(`report/payroll?from=${nxt}&to=${last}`)).rows; assert.ok(whole.every((r, k) => Math.abs(r.base - half[k].base - h2[k].base) < 0.05), 'two halves add up to the month');
+    assert.ok('ot_weekend_h' in mon[0] && 'leave_days' in mon[0]);
+    assert.equal((await S.raw(`payroll?from=${last}&to=${first}`)).status, 404); assert.equal((await S.raw(`report/payroll?from=${last}&to=${first}`)).status, 400); assert.equal((await S.raw(`report/payroll?from=${first}&to=2099-01-01`)).status, 400); }
+  const png = 'data:image/png;base64,iVBORw0KGgo='; assert.equal((await api('payroll/stamp')).stamp, ''); await api('payroll/stamp', 'PUT', { stamp: png }); assert.equal((await api('payroll/stamp')).stamp, png);
+  assert.equal((await S.raw('payroll/stamp', 'PUT', { stamp: 'data:text/html;base64,AAAA' })).status, 400); assert.equal((await api('settings')).company_stamp, undefined);
+  await api('payroll/stamp', 'PUT', { stamp: '' }); assert.equal((await api('payroll/stamp')).stamp, '');
   console.log('e2e-payroll passed: salary structure + revisions, FBR-style tax slabs, EOBI, SESSI/PESSI, approval, history, bank file, increments, permissions');
 } catch (e) { console.error('E2E-PAYROLL FAILED:', (e.stack || '').split('\n').filter(l => /e2e-payroll.js:/.test(l)).slice(0, 2).join(' | ') + ' :: ' + e.message); process.exitCode = 1; }
 finally { S.stop(); }

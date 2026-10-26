@@ -39,7 +39,7 @@ public class AlertService extends Service {
 
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         channels();
-        Notification n = new Notification.Builder(this, CH_STATUS).setSmallIcon(R.drawable.ic_stat).setContentTitle("Attendance Alerts")
+        Notification n = new Notification.Builder(this, CH_STATUS).setSmallIcon(R.drawable.ic_stat).setContentTitle("Optix Alerts")
             .setContentText("Listening for alerts").setContentIntent(open()).setOngoing(true).build();
         if (Build.VERSION.SDK_INT >= 34) startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE); else startForeground(1, n);
         if (worker == null || !worker.isAlive()) { running = true; worker = new Thread(this::loop, "alert-listener"); worker.start(); }
@@ -63,7 +63,7 @@ public class AlertService extends Service {
                 if (items != null && items.length() > 0) { show(items); Session.saveSince(this, r.optLong("latest", since)); }
                 backoff = 5000;
             } catch (UnauthorizedException e) {
-                Session.clear(this); notifyOnce("This phone was disconnected", "Open Attendance Alerts and pair it again."); stopSelf(); return;
+                Session.clear(this); notifyOnce("This phone was disconnected", "Open Optix Alerts and pair it again."); stopSelf(); return;
             } catch (InterruptedException e) { return;
             } catch (Exception e) {
                 try { Thread.sleep(backoff); } catch (InterruptedException ie) { return; }
@@ -102,7 +102,7 @@ public class AlertService extends Service {
         }
         if (n > single) {
             Notification s = new Notification.Builder(this, CH_ALERTS).setSmallIcon(R.drawable.ic_stat).setContentTitle((n - single) + " more alerts")
-                .setContentText("Open Attendance Alerts to read them").setContentIntent(open()).setAutoCancel(true).setGroup("alerts").build();
+                .setContentText("Open Optix Alerts to read them").setContentIntent(open()).setAutoCancel(true).setGroup("alerts").build();
             nm.notify(999, s);
         }
     }

@@ -1,6 +1,6 @@
 import express from 'express';
-import { db } from './db.js';
-import { addDays, dateStr, dayList } from './report.js';
+import { db, getSettings } from './db.js';
+import { addDays, dateStr, dayList, attendanceReport } from './report.js';
 import { gate, takeAdvance } from './workflow.js';
 import { notify, notifyManager } from './notify.js';
 import { emit } from './events.js';
@@ -41,7 +41,20 @@ function accrued(rule, year, join, now) {
   if (rule.accrual === 'monthly') return round((rule.quota / 12) * Math.max(0, end - start + 1));
   return Math.round(rule.quota * (13 - start) / 12 * 2) / 2; // yearly grant, prorated by months in service, nearest half day
 }
+// Compensatory Leave is earned, not granted: overtime of an employee with Enable Compensatory = Yes becomes days off (hours-per-day and expiry are in Settings).
+export const COMP = 'Compensatory Leave';
+db.prepare('INSERT OR IGNORE INTO leave_types(name, paid) VALUES(?,1)').run(COMP);
+function compBalance(emp, type, today) {
+  const S = getSettings(), hpd = Number(S.comp_hours_per_day) > 0 ? Number(S.comp_hours_per_day) : 8, exp = Number(S.comp_expiry_days) || 0;
+  const from = exp > 0 ? addDays(today, -exp) : addDays(today, -730);
+  const earnedMin = emp.enable_comp === 1 ? attendanceReport(from, today, { employeeId: emp.id }).filter(r => r.ot_status === 'compensatory').reduce((s, r) => s + r.overtime_min, 0) : 0;
+  const earned = Math.floor(earnedMin / (hpd * 60) * 2) / 2;
+  const leaves = db.prepare("SELECT status, days FROM leaves WHERE employee_id=? AND type=? AND to_date>=? AND status IN ('approved','pending')").all(emp.id, type.name, from);
+  const used = leaves.filter(l => l.status === 'approved').reduce((s, l) => s + (l.days ?? 0), 0), pending = leaves.filter(l => l.status === 'pending').reduce((s, l) => s + (l.days ?? 0), 0);
+  return { type: type.name, type_id: type.id, paid: type.paid, tracked: true, quota: 0, accrual: 'overtime', accrued: earned, carry_forward: 0, used, pending, available: round(earned - used - pending) };
+}
 export function balanceFor(emp, type, year, today = dateStr(new Date())) {
+  if (type.name === COMP) return compBalance(emp, type, today);
   const rule = typeRule(emp, type), now = { y: +today.slice(0, 4), m: +today.slice(5, 7) };
   const leaves = db.prepare("SELECT * FROM leaves WHERE employee_id=? AND type=? AND status IN ('approved','pending')").all(emp.id, type.name);
   const used = (y, status) => leaves.filter(l => l.status === status).reduce((s, l) => s + (leaveDaysByYear(emp, l.from_date, l.to_date, l.half).get(y) ?? 0), 0);
