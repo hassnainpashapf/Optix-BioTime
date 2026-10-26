@@ -710,24 +710,24 @@ html[data-skin=classic] .bmb svg{width:12px;height:12px}
 
 #login{display:none;min-height:100vh;background:#fff;flex-direction:column}
 #login .zl{display:flex;flex-direction:column;min-height:100vh;width:100%}
-#login .zlt{height:28vh;min-height:150px;display:flex;align-items:center;justify-content:center;gap:12px;color:#444}
-#login .zlt svg{width:52px;height:52px;color:#4f8a1e}#login .zlt b{font-size:40px;font-weight:800;color:#3d6e14}#login .zlt span{font-size:28px;font-weight:300}
-#login .zlb{flex:1;background:#8abf55;padding:40px 16px}#login .zlbox{max-width:400px;margin:0 auto;color:#fff}
-#login .zlbox h2{margin:0 0 16px;font-size:20px;font-weight:600;color:#fff;border:0;padding:0}
-#login .zlbox input{width:100%;height:44px;margin:0 0 14px;padding:0 12px;border:0;border-radius:2px;font-size:14px;background:#fff;color:#333;box-shadow:none}
-#login .zlbox button{width:100%;height:44px;border-radius:2px;font-size:15px;font-weight:600;padding:0;background:#3c6e1d;color:#fff;border:0;box-shadow:none;cursor:pointer}
-#login .zlbox .err{margin:12px 0 0;background:rgba(160,30,30,.6);color:#fff;padding:8px 10px;border-radius:2px;font-size:13px}
-#login .zlbox .alt{margin-top:18px;text-align:center}#login .zlbox .alt a{color:#fff;font-weight:600}
-#login .zlf{background:#8abf55;color:#e9f5da;text-align:center;font-size:12px;padding:0 0 18px}
+#login .zlt{height:185px;display:flex;align-items:center;justify-content:center;gap:14px;color:#4a4c53}
+#login .zlt svg{width:70px;height:70px;color:#8abf55}#login .zlt b{font-size:64px;font-weight:700;color:#4a4c53;letter-spacing:-1px}#login .zlt span{font-size:56px;font-weight:300;color:#4a4c53}
+#login .zlb{background:#8abf55;padding:60px 16px 80px}#login .zlbox{width:100%;max-width:700px;margin:0 auto;color:#fff}
+#login .zltabs{display:flex;align-items:center;gap:18px;margin:0 0 54px;font-size:26px}#login .zltabs a{color:#4a4c53;text-decoration:none;cursor:pointer}#login .zltabs a.on{color:#fff}#login .zltabs i{font-style:normal;color:#222;font-size:24px}
+#login .zlbox input{width:100%;height:65px;margin:0 0 46px;padding:0 14px;border:0;border-radius:0;font-size:22px;background:#fff;color:#333;box-shadow:none}#login .zlbox input::placeholder{color:#888}
+#login .zlbox button{width:100%;height:70px;margin-top:6px;border-radius:0;font-size:24px;font-weight:700;font-style:italic;padding:0;background:#4a4c53;color:#fff;border:1px solid #fff;box-shadow:none;cursor:pointer}
+#login .zlbox .err{margin:16px 0 0;background:rgba(160,30,30,.6);color:#fff;padding:10px 12px;border-radius:0;font-size:15px}
+#login .zlf{background:#fff;color:#222;text-align:center;font-size:18px;padding:50px 0 30px;margin-top:auto}#login .zlfl{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;color:#4a4c53}#login .zlfl svg{width:44px;height:44px;color:#8abf55}#login .zlfl b{font-size:44px;font-weight:800}
+@media(max-width:700px){#login .zlt b{font-size:40px}#login .zlt span{font-size:34px}#login .zlt svg{width:44px;height:44px}#login .zltabs{font-size:20px}#login .zlbox input{height:52px;font-size:17px;margin-bottom:28px}#login .zlbox button{height:56px;font-size:19px}#login .zlf{font-size:14px}}
 html[data-theme=dark] #login{background:#fff}html[data-theme=dark] #login .zlt{color:#444}
 
 .efid{grid-template-columns:1fr!important}
 </style><script>try{var sk=localStorage.skin||'classic';document.documentElement.dataset.skin=sk;var t=sk==='classic'?'light':(localStorage.theme||'light');document.documentElement.dataset.theme=t==='auto'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t}catch(e){}</script></head><body>
 <div id="login"><div class="zl"><div class="zlt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>OKT</b><span>Attendance</span></div>
- <div class="zlb"><div class="zlbox"><h2>Login</h2>
-  <input id="u" placeholder="Username" value="admin" autocomplete="username"><input id="p" type="password" placeholder="Password" autocomplete="current-password">
-  <button onclick="login()">Login</button><p id="le" class="err" style="display:none"></p><div class="alt"><a href="/portal">Employee self-service</a></div></div></div>
- <div class="zlf">&copy; OKT Attendance</div></div></div>
+ <div class="zlb"><div class="zlbox"><div class="zltabs"><a class="on">Admin Login</a><i>|</i><a href="/portal">Self-Service</a></div>
+  <input id="u" placeholder="Username" autocomplete="username"><input id="p" type="password" placeholder="Password" autocomplete="current-password">
+  <button onclick="login()">Login</button><p id="le" class="err" style="display:none"></p></div></div>
+ <div class="zlf"><div class="zlfl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>OKT</b></div>Copyright &copy;2026 OKT. All rights reserved.</div></div></div>
 <div id="tip"></div>
 <div id="app"><aside id="side"><div id="logo" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>OKT</span></div>
  <div id="sideico"><svg viewBox="0 0 24 24" fill="currentColor" onclick="bmMenu(event)" title="Bookmarks"><path d="M3 12V4h8l9 9-8 8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" onclick="sideSearch()" title="Search menu"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" onclick="sideFold()" title="Collapse all groups"><path d="M3 5h18M11 10h10M11 15h10M3 20h18M7 9l-4 3 4 3z" fill="currentColor"/></svg></div>
