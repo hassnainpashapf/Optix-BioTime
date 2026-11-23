@@ -154,10 +154,13 @@ try {
   const lv = await api('leaves', 'POST', { employee_id: A.id, type: 'Casual', from_date: addD(30), to_date: addD(31), note: 'Trip' });
   let ll = (await att('leavelist')).find(r => r.id === lv.id); assert.equal(ll.pay_code, 'Casual'); assert.equal(ll.approval_status, 'Pending'); assert.equal(ll.first_name, 'Alice'); assert.equal(ll.reason, 'Trip'); assert.equal(ll.start_time, addD(30)); assert.equal(ll.end_time, addD(31)); assert.ok(ll.apply_time);
   await api(`leaves/${lv.id}/approve`, 'POST', {}); assert.equal((await att('leavelist?status=approved')).filter(r => r.id === lv.id).length, 1); await api(`leaves/${lv.id}/cancel`, 'POST', {}); assert.equal((await att('leavelist')).find(r => r.id === lv.id).approval_status, 'Revoked');
-  const lb = await att('leavelist/bulk', 'POST', { by: 'dept', target_id: eng, start_time: addD(40), end_time: addD(40), pay_code: 'Casual', auto_approve: true }); assert.equal(lb.added, 2); await rej(att('leavelist/bulk', 'POST', { start_time: addD(40), end_time: addD(40), pay_code: 'Casual' }), /at least one employee/);
-  const lb2 = await att('leavelist/bulk', 'POST', { employee_ids: [A.id], start_time: addD(40), end_time: addD(40), pay_code: 'Casual' }).catch(e => e.message); assert.match(String(lb2), /already has leave/);
-  const li = await att('leavelist/import', 'POST', { csv: `code,type,from,to,reason\n${C.code},Sick,${addD(50)},${addD(50)},Fever\n${C.code},Nope,${addD(50)},${addD(50)}\n999,Sick,${addD(50)},${addD(50)}`, auto_approve: true }); assert.equal(li.added, 1); assert.equal(li.skipped, 2);
-  assert.equal((await att(`leavelist?from=${addD(50)}&to=${addD(50)}`)).length, 1);
+  // Keep these dates near today so the test remains valid around New Year;
+  // a yearly leave quota is correctly zero for a future calendar year.
+  const bulkLeaveDay = addD(5), importLeaveDay = addD(15);
+  const lb = await att('leavelist/bulk', 'POST', { by: 'dept', target_id: eng, start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual', auto_approve: true }); assert.equal(lb.added, 2); await rej(att('leavelist/bulk', 'POST', { start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual' }), /at least one employee/);
+  const lb2 = await att('leavelist/bulk', 'POST', { employee_ids: [A.id], start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual' }).catch(e => e.message); assert.match(String(lb2), /already has leave/);
+  const li = await att('leavelist/import', 'POST', { csv: `code,type,from,to,reason\n${C.code},Sick,${importLeaveDay},${importLeaveDay},Fever\n${C.code},Nope,${importLeaveDay},${importLeaveDay}\n999,Sick,${importLeaveDay},${importLeaveDay}`, auto_approve: true }); assert.equal(li.added, 1); assert.equal(li.skipped, 2);
+  assert.equal((await att(`leavelist?from=${importLeaveDay}&to=${importLeaveDay}`)).length, 1);
 
   // ---------- overtime
   await rej(att('otlist', 'POST', { employee_id: A.id, start_time: `${day(10)} 19:00`, end_time: `${day(10)} 18:00` }), /End must be after start/); await rej(att('otlist', 'POST', { employee_id: A.id, start_time: 'x', end_time: 'y' }), /YYYY-MM-DD HH:MM/);

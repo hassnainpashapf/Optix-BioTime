@@ -41,7 +41,8 @@ try {
   for (const n of ['Iqra', 'Junaid', 'Kiran']) await V('/employees', hrms, 'POST', { name: n, department: 'Sales', branch: 'Karachi' });
   const pg = await V('/employees?limit=2&offset=0', hrms); assert.equal(pg.body.total, 5); assert.equal(pg.body.data.length, 2);
   assert.equal((await V('/employees?limit=2&offset=3', hrms)).body.data.length, 2); assert.equal((await V('/employees?department=sales', hrms)).body.total, 3); assert.equal((await V('/employees?q=iqra', hrms)).body.total, 1);
-  assert.equal((await V('/departments', hrms)).body.data.length, 2); assert.equal((await V('/shifts', hrms)).body.data[0].name, 'Office');
+  // The initial database includes the built-in catch-all Department.
+  assert.equal((await V('/departments', hrms)).body.data.length, 3); assert.equal((await V('/shifts', hrms)).body.data[0].name, 'Office');
 
   // ---- status changes
   assert.equal((await V('/employees/3/status', hrms, 'PUT', { status: 'resigned', date: '2026-07-31', reason: 'Moved abroad' })).status, 200);
