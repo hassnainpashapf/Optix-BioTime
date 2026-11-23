@@ -386,6 +386,21 @@ app.get('/api/report/:kind.csv', (req, res) => {
 });
 
 const req_perms = (r) => r.perms ?? {};
+const APP_VERSION = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')).version;
+const UPDATE_REPO = 'hassnainpashapf/Optix-BioTime';
+let updateCache = { at: 0, value: null };
+const versionParts = (v) => String(v ?? '').replace(/^v/i, '').split('.').map(x => Number.parseInt(x, 10) || 0);
+const newerVersion = (a, b) => { const x = versionParts(a), y = versionParts(b); for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0); return false; };
+app.get('/api/system/update', async (_q, res) => {
+  if (Date.now() - updateCache.at < 10 * 60 * 1000 && updateCache.value) return res.json(updateCache.value);
+  try {
+    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { 'User-Agent': 'OKT-Attendance' }, signal: AbortSignal.timeout(5000) });
+    if (!r.ok) return res.json({ current: APP_VERSION, available: false, message: 'No published update is available yet.' });
+    const rel = await r.json(), asset = (rel.assets ?? []).find(a => /OKT-Setup-.*\.exe$/i.test(a.name));
+    const value = { current: APP_VERSION, latest: String(rel.tag_name ?? '').replace(/^v/i, ''), available: newerVersion(rel.tag_name, APP_VERSION), name: rel.name || rel.tag_name, notes: rel.body || '', url: asset?.browser_download_url || rel.html_url, installer: !!asset, published: rel.published_at };
+    updateCache = { at: Date.now(), value }; res.json(value);
+  } catch (e) { res.json({ current: APP_VERSION, available: false, message: 'Update check unavailable.' }); }
+});
 app.get('/api/dashboard', (_q, res) => {
   const t = dateStr(new Date());
   const rows = attendanceReport(t, t);
