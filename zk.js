@@ -8,6 +8,11 @@ import { notify } from './notify.js';
 
 const pad = (n) => String(n).padStart(2, '0');
 const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+const devicePersonName = (u, code) => {
+  const raw = u?.name ?? u?.userName ?? u?.user_name ?? u?.username ?? '';
+  const name = String(raw).replace(/[\u0000\r\n]+/g, ' ').trim().replace(/\s+/g, ' ');
+  return name && !/^user\s*\d+$/i.test(name) ? name.slice(0, 120) : `User ${code}`;
+};
 
 // People a device reports belong to that device's Area (Personnel > Area), unless HR already placed them somewhere
 export function adoptArea(deviceId, codes = null) {
@@ -303,7 +308,7 @@ export async function syncDevice(device, force = false) {
       WHERE employees.name LIKE 'User %' AND excluded.name NOT LIKE 'User %'`);
     for (const u of users) {
       const code = String(u.userId);
-      const name = String(u.name ?? '').trim() || `User ${code}`;
+      const name = devicePersonName(u, code);
       upsertEmp.run(code, name);
       db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, seen=datetime('now','localtime')").run(device.id, code, name === `User ${code}` ? null : name);
     }

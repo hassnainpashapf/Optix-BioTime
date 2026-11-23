@@ -107,8 +107,10 @@ admsRouter.post('/cdata', (req, res) => {
       if (l.startsWith('USER ')) { // names fill a placeholder; a card number enrolled on the device is adopted unless HR already set one
         const kv = parseKv(l, 5);
         if (!kv.pin) continue;
-        upsertUser.run(kv.pin, kv.name || `User ${kv.pin}`); count++;
-        db.prepare("INSERT INTO device_users(device_id, code, name, card) VALUES(?,?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, card=excluded.card, seen=datetime('now','localtime')").run(d.id, kv.pin, kv.name || null, cardOf(kv.card));
+        const deviceName = String(kv.name ?? '').replace(/[\u0000\r\n]+/g, ' ').trim().replace(/\s+/g, ' ');
+        const name = deviceName && !/^user\s*\d+$/i.test(deviceName) ? deviceName.slice(0, 120) : `User ${kv.pin}`;
+        upsertUser.run(kv.pin, name); count++;
+        db.prepare("INSERT INTO device_users(device_id, code, name, card) VALUES(?,?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, card=excluded.card, seen=datetime('now','localtime')").run(d.id, kv.pin, name === `User ${kv.pin}` ? null : name, cardOf(kv.card));
         const card = cardOf(kv.card), e = db.prepare('SELECT id, card_no FROM employees WHERE code=?').get(kv.pin);
         if (card && e && e.card_no !== card) {
           const owner = db.prepare('SELECT code FROM employees WHERE card_no=? AND id!=?').get(card, e.id);
