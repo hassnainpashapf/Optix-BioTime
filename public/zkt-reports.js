@@ -50,11 +50,11 @@ ZR.page=(name,label,mode)=>async()=>{css();const s=st(name);s.mode=mode||'range'
    <span class="zri" title="Search" onclick="ZR.tfind('${name}')">&#128269;</span><span class="zri" title="Select All" onclick="ZR.tall('${name}')">&#9745;</span><span class="zri ${s.multi?'on':''}" title="Multiple Select" onclick="ZR.tmul('${name}')">&#9776;</span><span class="zri ${s.sub?'on':''}" title="Select Sub-Department" onclick="ZR.tsub('${name}')">&#9095;</span></div>
    <div style="padding:6px 8px;display:none" id="zr_ts_${name}"><input style="width:100%;height:26px" placeholder="Search" oninput="ZR.tree('${name}',this.value)"></div><div class="zr-tree" id="zr_tr_${name}"></div></div>
   <div class="zr-main"><div class="zr-bar"><label>Employee<input id="zr_emp_${name}" readonly style="width:150px;cursor:pointer" value="${e_(s.emp.map(e=>e.code+' '+e.name).join(', '))}" onclick="ZR.pick('${name}')"></label>${dateBits}
-   <button class="zr-qb" title="Query" onclick="ZR.run('${name}')"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button></div>
+   <button class="zr-qb" title="Refresh report" onclick="ZR.run('${name}')"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button><button class="g sm" onclick="ZR.exp('${name}','csv')">CSV</button><button class="g sm" onclick="ZR.exp('${name}','xlsx')">Excel</button><button class="g sm" onclick="ZR.exp('${name}','pdf')">PDF</button></div>
   <div class="ztool"><div class="zgrp"><button class="zb" onclick="ZR.saveLay('${name}')">Save Layout</button><button class="zb" onclick="ZR.loadLay('${name}')">Load Layout</button></div></div>
   <div id="zr_t_${name}"><div class="zr-leg">Loading...</div></div><div class="zr-leg" id="zr_lg_${name}"></div></div></div>`};
-ZR.set=(n,k,v)=>{st(n)[k]=v};
-ZR.per=(n,v)=>{const s=st(n);s.per=v;const p=periodOf(v);if(p){s.from=p[0];s.to=p[1]}['from','to'].forEach(k=>{const el=document.getElementById(`zr_${k}_${n}`);if(el){el.value=s[k];el.disabled=v!=='0'}})};
+ZR.set=(n,k,v)=>{st(n)[k]=v;if(['from','to','year','lg'].includes(k))ZR.run(n)};
+ZR.per=(n,v)=>{const s=st(n);s.per=v;const p=periodOf(v);if(p){s.from=p[0];s.to=p[1]}['from','to'].forEach(k=>{const el=document.getElementById(`zr_${k}_${n}`);if(el){el.value=s[k];el.disabled=v!=='0'}});ZR.run(n)};
 ZR.kind=(n,k)=>{st(n).kind=k;ZR.tree(n);ZR.run(n)};
 // ----- tree (department / area / group) -----
 ZR.tree=async(n,find)=>{const s=st(n),box=document.getElementById('zr_tr_'+n);if(!box)return;const k=s.kind;
