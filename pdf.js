@@ -1,10 +1,14 @@
-// Minimal PDF table writer (A4 landscape, Helvetica, repeating header row, page numbers). Text is WinAnsi: other characters print as "?".
-const PW = 842, PH = 595, M = 28;
+// Minimal PDF table writer (configurable page and direction, Helvetica,
+// repeating header row, page numbers). Text is WinAnsi: other characters print as "?".
+const M = 28;
 const enc = (s) => Buffer.from(String(s ?? '').replace(/[\r\n\t]+/g, ' ').replace(/[^\x00-\xff]/g, '?'), 'latin1');
 const esc = (b) => b.toString('latin1').replace(/[\\()]/g, (c) => '\\' + c);
 const f2 = (n) => (Math.round(n * 100) / 100).toString();
 
-export function makePdf({ title, subtitle = '', columns, rows }) {
+export function makePdf({ title, subtitle = '', columns, rows, pageSize = 'A4', orientation = 'landscape' }) {
+  const sizes = { A4: [595, 842], Letter: [612, 792], Legal: [612, 1008] };
+  const base = sizes[pageSize] || sizes.A4, portrait = orientation === 'portrait' || orientation === 'vertical';
+  const [PW, PH] = portrait ? base : [base[1], base[0]];
   // font size shrinks until the columns fit the page width, then text is trimmed
   let fs = 8;
   const natural = (size) => columns.map(c => Math.min(34, Math.max(String(c.label).length, ...rows.slice(0, 400).map(r => String(r[c.key] ?? '').length))) * size * 0.52 + 8);

@@ -249,11 +249,11 @@ export function runReport(name, q) {
 
 // ---------- export ----------
 const clean = (rows) => rows.map(r => { const o = {}; for (const k in r) if (k[0] !== '_' || k === '_p') o[k] = r[k]; return o; });
-function exportFile(res, rep, fmt, colIdx) {
+function exportFile(res, rep, fmt, colIdx, options = {}) {
   let cols = rep.columns; if (colIdx) cols = colIdx.map(i => cols[i]).filter(Boolean); else cols = cols.filter(c => !c.hide);
   cols = cols.map(c => ({ key: c.key, label: c.group ? `${c.group} ${c.label}` : c.label }));
   const base = rep.label.toLowerCase().replace(/[^a-z0-9]+/g, '-'), rows = clean(rep.rows), sub = `${rep.from} to ${rep.to}`;
-  const data = { title: rep.label, subtitle: sub, columns: cols, rows };
+  const data = { title: rep.label, subtitle: sub, columns: cols, rows, pageSize: options.pageSize, orientation: options.orientation };
   if (fmt === 'csv') return res.type('text/csv').attachment(`${base}.csv`).send(toCsvCols(cols, rows));
   if (fmt === 'txt') return res.type('text/plain').attachment(`${base}.txt`).send([cols.map(c => c.label).join('\t'), ...rows.map(r => cols.map(c => String(r[c.key] ?? '')).join('\t'))].join('\n'));
   if (fmt === 'xlsx' || fmt === 'xls') return res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(`${base}.xlsx`).send(makeXlsx(data));
@@ -354,6 +354,18 @@ zkReportsRouter.get('/zkrep/:name', wrap((req, res) => {
 zkReportsRouter.get('/zkrep/:name/export', wrap((req, res) => {
   const rep = runReport(req.params.name, req.query);
   if (req.query.export_range === 'page') { const page = Math.max(1, +req.query.page || 1), size = Math.min(20000, Math.max(1, +req.query.page_size || 20)); rep.rows = rep.rows.slice((page - 1) * size, page * size); }
+  const style = String(req.query.export_style || 'default');
+  if (style !== 'default') {
+    const byDept = style === 'department', key = byDept ? 'Department' : 'Employee ID', nameKey = byDept ? 'Department' : 'First Name';
+    const groups = new Map();
+    for (const row of rep.rows) {
+      const id = String(row[key] ?? row[nameKey] ?? 'Unknown'), g = groups.get(id) || { __id: id, __name: String(row[nameKey] ?? id), __count: 0 };
+      g.__count++; for (const c of rep.columns) if (typeof row[c.key] === 'number') g[c.key] = (g[c.key] || 0) + row[c.key]; groups.set(id, g);
+    }
+    const nums = rep.columns.filter(c => rep.rows.some(r => typeof r[c.key] === 'number'));
+    rep.columns = [{ key: '__id', label: byDept ? 'Department' : 'Employee ID' }, ...(!byDept ? [{ key: '__name', label: 'Name' }] : []), { key: '__count', label: 'Records' }, ...nums];
+    rep.rows = [...groups.values()]; rep.label += byDept ? ' - Statistics by Department' : ' - Statistics by Employee';
+  }
   const idx = req.query.cols ? String(req.query.cols).split(',').map(Number).filter(Number.isInteger) : null;
-  exportFile(res, rep, String(req.query.format ?? 'csv'), idx);
+  exportFile(res, rep, String(req.query.format ?? 'csv'), style === 'default' ? idx : null, { pageSize: String(req.query.pdf_page_size || 'A4'), orientation: String(req.query.pdf_orientation || 'landscape') });
 }));
