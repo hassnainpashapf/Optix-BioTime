@@ -269,7 +269,10 @@ zkReportsRouter.get('/zkrep/tree/:kind', (req, res) => {
   const sc = scopeClause('e');
   const used = (col) => sc.sql ? new Set(db.prepare(`SELECT DISTINCT e.${col} AS v FROM employees e WHERE 1=1${sc.sql}`).all(...sc.args).map(r => r.v)) : null;
   if (req.params.kind === 'dept') { const ok = used('department_id'); return res.json(db.prepare('SELECT id, name, parent_id AS pid, code FROM departments ORDER BY name').all().filter(d => !ok || ok.has(d.id))); }
-  if (req.params.kind === 'area') { const ok = used('branch_id'); return res.json(db.prepare('SELECT id, name, NULL AS pid, code FROM branches ORDER BY name').all().filter(d => !ok || ok.has(d.id))); }
+  // Keep every configured Area visible, even when it currently has no staff.
+  // This lets an administrator select an empty area and then assign employees
+  // to it instead of the picker appearing blank.
+  if (req.params.kind === 'area') return res.json(db.prepare('SELECT id, name, NULL AS pid, code FROM branches ORDER BY name').all());
   if (req.params.kind === 'group') { const ok = used('group_id'); return res.json(db.prepare('SELECT id, name, NULL AS pid, id AS code FROM emp_groups ORDER BY name').all().filter(d => !ok || ok.has(d.id))); }
   if (req.params.kind === 'leavegroup') return res.json(db.prepare('SELECT id, name FROM leave_policies ORDER BY name').all());
   fail(res, 'Unknown tree');
