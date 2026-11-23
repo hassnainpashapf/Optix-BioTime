@@ -7,7 +7,7 @@ const f2 = (n) => (Math.round(n * 100) / 100).toString();
 
 export function makePdf({ title, subtitle = '', columns, rows, pageSize = 'A4', orientation = 'landscape' }) {
   const sizes = { A4: [595, 842], Letter: [612, 792], Legal: [612, 1008] };
-  const base = sizes[pageSize] || sizes.A4, portrait = orientation === 'portrait' || orientation === 'vertical';
+  const base = sizes[pageSize] || sizes.A4, portrait = orientation === 'portrait' || orientation === 'vertical' || (orientation === 'default' && columns.length <= 6);
   const [PW, PH] = portrait ? base : [base[1], base[0]];
   // font size shrinks until the columns fit the page width, then text is trimmed
   let fs = 8;
