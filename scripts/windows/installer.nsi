@@ -13,6 +13,7 @@ InstallDirRegKey HKLM "Software\Optix" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 BrandingText "OKT"
+Icon "stage\okt.ico"
 !define MUI_ABORTWARNING
 
 Var HttpPort
@@ -96,6 +97,7 @@ Section "Optix" SecMain
   File "stage\node.exe"
   File "stage\install-task.ps1"
   File "stage\remove-task.ps1"
+  File "stage\okt.ico"
   SetOutPath "$INSTDIR\app"
   File /r "stage\app\*.*"
   ; settings and data live in ProgramData so an upgrade or uninstall never touches them
@@ -116,6 +118,9 @@ Section "Optix" SecMain
   ; shortcuts
   CreateDirectory "$SMPROGRAMS\Optix"
   WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
+  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
+  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "IconIndex" "0"
+  CreateShortcut "$DESKTOP\OKT Attendance.lnk" "http://localhost:$HttpPort" "" "$INSTDIR\okt.ico" 0
   CreateShortcut "$SMPROGRAMS\Optix\Uninstall Optix.lnk" "$INSTDIR\Uninstall.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\Optix" "InstallDir" "$INSTDIR"
@@ -131,10 +136,12 @@ Section "Uninstall"
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\remove-task.ps1"'
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Optix server"'
   RMDir /r "$SMPROGRAMS\Optix"
+  Delete "$DESKTOP\OKT Attendance.lnk"
   RMDir /r "$INSTDIR\app"
   Delete "$INSTDIR\node.exe"
   Delete "$INSTDIR\install-task.ps1"
   Delete "$INSTDIR\remove-task.ps1"
+  Delete "$INSTDIR\okt.ico"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix"
