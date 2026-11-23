@@ -128,7 +128,7 @@ ZR.expMenu=(ev,n)=>{ev.stopPropagation();document.querySelectorAll('.tbmenu').fo
  m.innerHTML=[['csv','Export CSV'],['xlsx','Export Excel'],['pdf','Export PDF'],['print','Print']].map(x=>`<a onclick="document.querySelector('.tbmenu').remove();ZR.exp('${n}','${x[0]}')">${x[1]}</a>`).join('');
  const b=ev.currentTarget.getBoundingClientRect();m.style.top=b.bottom+4+'px';m.style.left=Math.max(8,b.right-170)+'px';document.body.appendChild(m);setTimeout(()=>document.addEventListener('click',function f(e){if(!m.contains(e.target)){m.remove();document.removeEventListener('click',f)}}),0)};
 ZR.download=async(url,fallback)=>{const r=await fetch('/api/'+url,{headers:{Authorization:'Bearer '+T}});if(!r.ok){const j=await r.json().catch(()=>({}));throw Error(j.error||r.statusText)}
- const cd=r.headers.get('content-disposition')||'',nm=(cd.match(/filename="?([^";]+)/)||[])[1]||fallback,a=document.createElement('a');a.href=URL.createObjectURL(await r.blob());a.download=nm;a.click()};
+ const cd=r.headers.get('content-disposition')||'',nm=(cd.match(/filename="?([^";]+)/)||[])[1]||fallback,u=URL.createObjectURL(await r.blob()),a=document.createElement('a');a.href=u;a.download=nm;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{a.remove();URL.revokeObjectURL(u)},1000)};
 ZR.exp=async(n,fmt)=>{const s=st(n);if(!s.rep)return;try{
  if(fmt==='print')return ZR.print(n);const q=query(n);q.set('format',fmt);q.set('cols',visIdx(n).join(','));await ZR.download(`zkrep/${n}/export?`+q,n+'.'+fmt)}catch(e){alert(e.message)}};
 ZR.print=n=>{const s=st(n),r=s.rep,vi=visIdx(n),w=window.open('','_blank');if(!w)return alert('Allow pop-ups to print');

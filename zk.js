@@ -296,8 +296,17 @@ export async function syncDevice(device, force = false) {
     const users = (await zk.getUsers()).data ?? [];
     const logs = await readLogs(zk);
 
-    const insEmp = db.prepare('INSERT OR IGNORE INTO employees(code, name) VALUES(?,?)');
-    for (const u of users) { insEmp.run(String(u.userId), u.name || `User ${u.userId}`); db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, seen=datetime('now','localtime')").run(device.id, String(u.userId), u.name || null); }
+    // Import names from the device when the employee is new or still has the
+    // placeholder created by an earlier punch. Never overwrite a real HR name.
+    const upsertEmp = db.prepare(`INSERT INTO employees(code, name) VALUES(?,?)
+      ON CONFLICT(code) DO UPDATE SET name=excluded.name
+      WHERE employees.name LIKE 'User %' AND excluded.name NOT LIKE 'User %'`);
+    for (const u of users) {
+      const code = String(u.userId);
+      const name = String(u.name ?? '').trim() || `User ${code}`;
+      upsertEmp.run(code, name);
+      db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, seen=datetime('now','localtime')").run(device.id, code, name === `User ${code}` ? null : name);
+    }
 
     const added = saveLogs(logs, device.id); adoptArea(device.id);
     if (db.prepare('SELECT 1 FROM logs WHERE device_id=? AND (state IS NULL OR verify IS NULL) LIMIT 1').get(device.id)) { // punches saved before the punch code was read get it now
