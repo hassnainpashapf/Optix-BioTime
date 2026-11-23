@@ -355,5 +355,19 @@ zkReportsRouter.get('/zkrep/:name/export', wrap((req, res) => {
   const rep = runReport(req.params.name, req.query);
   if (req.query.export_range === 'page') { const page = Math.max(1, +req.query.page || 1), size = Math.min(20000, Math.max(1, +req.query.page_size || 20)); rep.rows = rep.rows.slice((page - 1) * size, page * size); }
   const idx = req.query.cols ? String(req.query.cols).split(',').map(Number).filter(Number.isInteger) : null;
-  exportFile(res, rep, String(req.query.format ?? 'csv'), idx, { pageSize: String(req.query.pdf_page_size || 'A4'), orientation: String(req.query.pdf_orientation || 'default') });
+  const style = String(req.query.pdf_style || 'default');
+  if (style !== 'default') {
+    const byDepartment = style === 'department', idKey = byDepartment ? 'Department' : 'Employee ID', personName = byDepartment ? null : 'First Name';
+    const sourceColumns = idx ? idx.map(i => rep.columns[i]).filter(Boolean) : rep.columns.filter(c => !c.hide);
+    const summary = new Map();
+    for (const row of rep.rows) {
+      const id = String(row[idKey] ?? (personName ? row[personName] : null) ?? 'Unknown');
+      let out = summary.get(id); if (!out) { out = { __id: id, __name: personName ? String(row[personName] ?? id) : undefined, __count: 0 }; summary.set(id, out); }
+      out.__count++; for (const c of rep.columns) if (typeof row[c.key] === 'number') out[c.key] = (out[c.key] || 0) + row[c.key];
+    }
+    const totals = sourceColumns.filter(c => rep.rows.some(r => typeof r[c.key] === 'number'));
+    rep.columns = [{ key: '__id', label: byDepartment ? 'Department' : 'Employee ID' }, ...(personName ? [{ key: '__name', label: 'Name' }] : []), { key: '__count', label: 'Records' }, ...totals];
+    rep.rows = [...summary.values()]; rep.label += byDepartment ? ' - Statistics by Department' : ' - Statistics by Personnel';
+  }
+  exportFile(res, rep, String(req.query.format ?? 'csv'), style === 'default' ? idx : null, { pageSize: String(req.query.pdf_page_size || 'A4'), orientation: String(req.query.pdf_orientation || 'default') });
 }));

@@ -723,7 +723,7 @@ html[data-skin=classic] .bmb svg{width:12px;height:12px}
 html[data-theme=dark] #login{background:#fff}html[data-theme=dark] #login .zlt{color:#444}
 
 .efid{grid-template-columns:1fr!important}
-</style><script>try{var sk=localStorage.skin||'classic';document.documentElement.dataset.skin=sk;var t=sk==='classic'?'light':(localStorage.theme||'light');document.documentElement.dataset.theme=t==='auto'?(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'):t}catch(e){}</script></head><body>
+</style><script>try{var sk='classic';localStorage.skin=sk;document.documentElement.dataset.skin=sk;var t='light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.skin='classic';document.documentElement.dataset.theme='light'}</script></head><body>
 <div id="login"><div class="zl"><div class="zlt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2 4 5v6c0 5.2 3.4 9.2 8 11 4.6-1.8 8-5.8 8-11V5z"/><circle cx="12" cy="9" r="2"/><path d="M12 11v6"/></svg><b>OK</b><span>Time</span></div>
  <div class="zlb"><div class="zlbox"><div class="zltabs"><a class="on">Administrator Login</a><i>|</i><a href="/portal">Employee Self-Service</a></div>
   <div class="zlin"><input id="u" placeholder="Username" autocomplete="username"></div><div class="zlin"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="zleye" type="button" title="Show password" aria-label="Show password" onclick="toggleLoginPassword(this)"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>

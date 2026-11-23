@@ -213,6 +213,7 @@ addCol('devices', 'log_capacity', 'INTEGER');
 addCol('devices', 'dev_serial', 'TEXT'); // serial number the device reports itself (pull devices)
 addCol('devices', 'dev_fp', 'INTEGER'); addCol('devices', 'dev_face', 'INTEGER'); // fingerprints and faces the device itself reports (pull devices) // how many punches the device can hold
 addCol('devices', 'clock_diff_s', 'INTEGER'); // device clock minus server clock, seconds, at the last read
+addCol('devices', 'users_sync', 'TEXT'); // last scheduled directory-only scan of this pull device
 addCol('devices', 'brand', 'TEXT'); addCol('devices', 'dev_user', 'TEXT'); addCol('devices', 'dev_pass', 'BLOB'); // other brands: Hikvision / Dahua / Suprema (BioStar 2), reached by their network API
 addCol('devices', 'comm_key', 'TEXT'); // the device's Comm Key (password) for pull mode; empty = none
 addCol('devices', 'att_device', 'INTEGER DEFAULT 1'); // 0 = access-control only: its punches are not used for attendance
