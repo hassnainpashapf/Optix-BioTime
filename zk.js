@@ -96,6 +96,27 @@ async function openDevice(device) {
   if (device.comm_key) await authenticate(zk, device.comm_key);
   return zk;
 }
+// Some PUSH firmware rejects USERINFO table queries with Return=-1004. If its
+// LAN address is reachable, read the directory over the normal TCP protocol.
+export async function syncDeviceUsers(device) {
+  const zk = await openDevice(device);
+  try {
+    const users = (await zk.getUsers()).data ?? [];
+    const upsertEmp = db.prepare(`INSERT INTO employees(code, name) VALUES(?,?)
+      ON CONFLICT(code) DO UPDATE SET name=excluded.name
+      WHERE (employees.name LIKE 'User %' OR employees.name='' OR employees.name IS NULL OR employees.name=employees.code) AND excluded.name NOT LIKE 'User %'`);
+    for (const u of users) {
+      const code = String(u.userId), name = devicePersonName(u, code);
+      upsertEmp.run(code, name);
+      db.prepare("INSERT INTO device_users(device_id, code, name) VALUES(?,?,?) ON CONFLICT(device_id, code) DO UPDATE SET name=excluded.name, seen=datetime('now','localtime')")
+        .run(device.id, code, name === `User ${code}` ? null : name);
+    }
+    adoptArea(device.id, users.map(u => String(u.userId)));
+    db.prepare('UPDATE devices SET users_sync=?, last_sync=?, last_status=? WHERE id=?')
+      .run(fmt(new Date()), fmt(new Date()), `OK: ${users.length} users scanned over TCP`, device.id);
+    return { users: users.length };
+  } finally { try { await zk.disconnect(); } catch {} }
+}
 // Add or update people on a pull device (CMD_USER_WRQ, 72-byte record). Fingerprints and faces are enrolled on the device itself.
 export async function sendUsersToDevice(device, people) {
   { const B = await import('./brands.js'); if (B.isBranded(device)) return B.sendUsersBranded(device, people); }

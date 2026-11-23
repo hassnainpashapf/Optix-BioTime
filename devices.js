@@ -5,7 +5,7 @@ import { userCmd, queueCommand, logEvent, eligibleEmployees } from './devsync.js
 import { parseCsv, toCsv } from './csv.js';
 import { notify } from './notify.js';
 import { emit } from './events.js';
-import { compareDevices, syncDevice, setDeviceClock, clearDeviceLogs, sendUsersToDevice, removeUsersFromDevice, startEnroll, readTemplatesNow, sendFingerprintsToDevice, enrolling } from './zk.js';
+import { compareDevices, syncDevice, syncDeviceUsers, setDeviceClock, clearDeviceLogs, sendUsersToDevice, removeUsersFromDevice, startEnroll, readTemplatesNow, sendFingerprintsToDevice, enrolling } from './zk.js';
 import os from 'node:os';
 import { BRANDS, testDevice } from './brands.js';
 import { encrypt } from './bio.js';
@@ -53,18 +53,24 @@ export async function checkDevices(nowMs = Date.now()) {
   for (const c of stale) { db.prepare("UPDATE device_commands SET status='failed', result='No reply from the device' WHERE id=?").run(c.id); logEvent(c.device_id, 'command_failed', `${hideTmpl(c.cmd).split('\t')[0].slice(0, 60)}: no reply from the device`); }
   return out;
 }
-// Devices added by IP and port (pull): the server connects to them and reads new punches by itself, as often as "pull_sync_min" says.
+// IP-connected devices are periodically scanned for user names. Pull devices
+// also import punches; PUSH devices only get a directory scan to avoid rereading
+// their full attendance history on every interval.
 const pulling = new Set();
 export async function autoPull(nowMs = Date.now()) {
   const settings = getSettings(), every = Number(settings.pull_sync_min) || 0, userEvery = Number(settings.device_user_sync_min ?? 5) || 0, done = [];
   if (!every && !userEvery) return done;
-  for (const d of db.prepare("SELECT * FROM devices WHERE approved=1 AND sn IS NULL AND ip IS NOT NULL AND ip<>''").all()) {
+  for (const d of db.prepare("SELECT * FROM devices WHERE approved=1 AND ip IS NOT NULL AND ip<>''").all()) {
     if (pulling.has(d.id) || enrolling.has(d.id) || d.online === 0) continue;                                   // already running, or the last check says it is off
     const last = d.last_sync ? ts(d.last_sync) : 0, needsPunchSync = every > 0 && (!last || nowMs - last >= every * 60000 - 5000);
     const usersLast = d.users_sync ? ts(d.users_sync) : 0, needsUserSync = userEvery > 0 && (!usersLast || nowMs - usersLast >= userEvery * 60000 - 5000);
     if (!needsPunchSync && !needsUserSync) continue;
     pulling.add(d.id);
-    try { const r = await syncDevice(d, needsUserSync && !needsPunchSync); db.prepare('UPDATE devices SET users_sync=? WHERE id=?').run(new Date(nowMs).toLocaleString('sv'), d.id); done.push({ id: d.id, ...r }); } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
+    try {
+      const r = isPush(d) ? await syncDeviceUsers(d) : await syncDevice(d, needsUserSync && !needsPunchSync);
+      if (!isPush(d)) db.prepare('UPDATE devices SET users_sync=? WHERE id=?').run(new Date(nowMs).toLocaleString('sv'), d.id);
+      done.push({ id: d.id, ...r });
+    } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
   }
   return done;
 }
@@ -155,8 +161,8 @@ devicesRouter.post('/devices/:id/test', async (req, res) => {
 });
 devicesRouter.post('/devices/:id/sync', async (req, res) => { // pull devices: read users and all punches now
   const d = load(req, res); if (!d) return;
-  if (isPush(d)) return fail(res, 'This is a push device: it uploads by itself. Use "Request logs" to ask it to send punches again.');
-  try { const r = await syncDevice(d, true); res.json(r); } catch (e) { logEvent(d.id, 'sync_error', e.message); res.status(502).json({ error: 'Device sync failed: ' + e.message }); }
+  if (isPush(d) && (!d.ip || d.brand && d.brand !== 'zkteco')) return fail(res, 'This push device has no supported direct TCP address. It will upload users and punches when it next connects.');
+  try { const r = await syncDevice(isPush(d) ? { ...d, sn: null } : d, true); res.json(r); } catch (e) { logEvent(d.id, 'sync_error', e.message); res.status(502).json({ error: 'Device sync failed: ' + e.message }); }
 });
 
 // Fingerprint enrolment from the employee screen: the device opens its own enrolment screen for this person, who puts the finger on the device.
