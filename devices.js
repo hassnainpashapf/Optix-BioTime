@@ -56,13 +56,15 @@ export async function checkDevices(nowMs = Date.now()) {
 // Devices added by IP and port (pull): the server connects to them and reads new punches by itself, as often as "pull_sync_min" says.
 const pulling = new Set();
 export async function autoPull(nowMs = Date.now()) {
-  const every = Number(getSettings().pull_sync_min) || 0, done = [];
-  if (!every) return done;
+  const settings = getSettings(), every = Number(settings.pull_sync_min) || 0, userEvery = Number(settings.device_user_sync_min ?? 5) || 0, done = [];
+  if (!every && !userEvery) return done;
   for (const d of db.prepare("SELECT * FROM devices WHERE approved=1 AND sn IS NULL AND ip IS NOT NULL AND ip<>''").all()) {
     if (pulling.has(d.id) || enrolling.has(d.id) || d.online === 0) continue;                                   // already running, or the last check says it is off
-    if (d.last_sync && nowMs - ts(d.last_sync) < every * 60000 - 5000) continue;
+    const last = d.last_sync ? ts(d.last_sync) : 0, needsPunchSync = every > 0 && (!last || nowMs - last >= every * 60000 - 5000);
+    const usersLast = d.users_sync ? ts(d.users_sync) : 0, needsUserSync = userEvery > 0 && (!usersLast || nowMs - usersLast >= userEvery * 60000 - 5000);
+    if (!needsPunchSync && !needsUserSync) continue;
     pulling.add(d.id);
-    try { const r = await syncDevice(d); done.push({ id: d.id, ...r }); } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
+    try { const r = await syncDevice(d, needsUserSync && !needsPunchSync); db.prepare('UPDATE devices SET users_sync=? WHERE id=?').run(new Date(nowMs).toLocaleString('sv'), d.id); done.push({ id: d.id, ...r }); } catch (e) { logEvent(d.id, 'sync_error', e.message); } finally { pulling.delete(d.id); }
   }
   return done;
 }

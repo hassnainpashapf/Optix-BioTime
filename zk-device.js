@@ -446,14 +446,14 @@ gps('dept', 'zk_gps_dept', 'department_id', 'departments', (did, site) => { for 
 
 // ---------- device configuration (defaults) ----------
 const CFG = { zkd_delay: 10, zkd_error_delay: 30, zkd_realtime: 1, zkd_auto_approve: 0, zkd_timezone: '' };
-const cfgGet = () => { const o = { ...CFG }; for (const r of db.prepare("SELECT key, value FROM settings WHERE key LIKE 'zkd\\_%' ESCAPE '\\'").all()) if (r.key in o) o[r.key] = typeof CFG[r.key] === 'number' ? Number(r.value) : r.value; const S = getSettings(); return { ...o, device_offline_min: S.device_offline_min, monitor_refresh_sec: S.monitor_refresh_sec, store_templates: S.store_templates }; };
+const cfgGet = () => { const o = { ...CFG }; for (const r of db.prepare("SELECT key, value FROM settings WHERE key LIKE 'zkd\\_%' ESCAPE '\\'").all()) if (r.key in o) o[r.key] = typeof CFG[r.key] === 'number' ? Number(r.value) : r.value; const S = getSettings(); return { ...o, device_offline_min: S.device_offline_min, monitor_refresh_sec: S.monitor_refresh_sec, store_templates: S.store_templates, device_user_sync_min: S.device_user_sync_min }; };
 export const autoApprove = () => cfgGet().zkd_auto_approve === 1;
 zkdRouter.get('/zkd/config', (_q, res) => res.json(cfgGet()));
 zkdRouter.put('/zkd/config', (req, res) => {
   const b = req.body ?? {}, up = db.prepare('INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value');
   const rng = (k, lo, hi, l) => { if (k in b) { const v = Number(b[k]); if (!(Number.isInteger(v) && v >= lo && v <= hi)) return `${l} must be a whole number from ${lo} to ${hi}`; } return null; };
-  const err = rng('zkd_delay', 1, 3600, 'Upload interval') || rng('zkd_error_delay', 1, 3600, 'Retry delay') || rng('zkd_realtime', 0, 1, 'Realtime') || rng('zkd_auto_approve', 0, 1, 'Auto approve') || rng('device_offline_min', 1, 1440, 'Offline after') || rng('monitor_refresh_sec', 3, 3600, 'Monitor refresh'); if (err) return fail(res, err);
+  const err = rng('zkd_delay', 1, 3600, 'Upload interval') || rng('zkd_error_delay', 1, 3600, 'Retry delay') || rng('zkd_realtime', 0, 1, 'Realtime') || rng('zkd_auto_approve', 0, 1, 'Auto approve') || rng('device_offline_min', 1, 1440, 'Offline after') || rng('monitor_refresh_sec', 3, 3600, 'Monitor refresh') || rng('device_user_sync_min', 0, 1440, 'Device user scan interval'); if (err) return fail(res, err);
   for (const k of Object.keys(CFG)) if (k in b) up.run(k, String(k === 'zkd_timezone' ? String(b[k] ?? '').slice(0, 40) : Number(b[k])));
-  setSettings({ device_offline_min: b.device_offline_min, monitor_refresh_sec: b.monitor_refresh_sec, store_templates: b.store_templates }); res.json(cfgGet());
+  setSettings({ device_offline_min: b.device_offline_min, monitor_refresh_sec: b.monitor_refresh_sec, store_templates: b.store_templates, device_user_sync_min: b.device_user_sync_min }); res.json(cfgGet());
 });
 zkdRouter.post('/zkd/config/apply', (_q, res) => { const c = cfgGet(); const r = db.prepare('UPDATE devices SET delay=?, error_delay=?, realtime=?' + (c.zkd_timezone ? ', timezone=?' : '')).run(c.zkd_delay, c.zkd_error_delay, c.zkd_realtime, ...(c.zkd_timezone ? [c.zkd_timezone] : [])); res.json({ devices: Number(r.changes) }); });

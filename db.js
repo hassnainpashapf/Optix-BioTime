@@ -319,6 +319,7 @@ export const DEFAULTS = {
   comp_hours_per_day: 8,   // compensatory time off: this many overtime hours earn one day off (employees with Enable Compensatory = Yes)
   comp_expiry_days: 90,    // overtime older than this no longer earns time off (0 = never expires)
   pull_sync_min: 2,        // devices added by IP and port (pull) are read by the server every this many minutes (0 = only when you press Sync)
+  device_user_sync_min: 5, // refresh device user names even when its punch count has not changed (0 = only manual sync)
   device_offline_min: 5,   // a device that has not contacted the server for this many minutes is shown as offline
   store_templates: 0,      // 1 = keep fingerprint/face templates reported by devices (encrypted) so they can be copied to other devices
   portal_gps: 2,           // phone punch location: 0 = record only, 1 = accept anywhere but flag outside the site, 2 = must be inside an allowed site

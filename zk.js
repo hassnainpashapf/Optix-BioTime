@@ -300,7 +300,7 @@ export async function syncDevice(device, force = false) {
     const users = (await zk.getUsers()).data ?? [];
     const upsertEmp = db.prepare(`INSERT INTO employees(code, name) VALUES(?,?)
       ON CONFLICT(code) DO UPDATE SET name=excluded.name
-      WHERE employees.name LIKE 'User %' AND excluded.name NOT LIKE 'User %'`);
+      WHERE (employees.name LIKE 'User %' OR employees.name='' OR employees.name IS NULL) AND excluded.name NOT LIKE 'User %'`);
 
     // Always refresh the device user directory, even when there are no new
     // punches. Names may have been added or corrected after the last sync.

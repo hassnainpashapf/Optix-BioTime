@@ -11,6 +11,9 @@ const tcp = net.createServer(s => s.on('error', () => {})); await new Promise(r 
 const closed = net.createServer(); await new Promise(r => closed.listen(0, '127.0.0.1', r)); const closedPort = closed.address().port; await new Promise(r => closed.close(r));
 const S = await startServer(), api = S.api;
 try {
+  const settings = await api('zkd/config'); assert.equal(settings.device_user_sync_min, 5, 'user scanner defaults to a five-minute interval');
+  await api('zkd/config', 'PUT', { ...settings, device_user_sync_min: 0 }); assert.equal((await api('zkd/config')).device_user_sync_min, 0, 'automatic user scanning can be disabled');
+  assert.equal((await S.raw('zkd/config', 'PUT', { ...settings, device_user_sync_min: 1441 })).status, 400, 'invalid user scan intervals are rejected');
   const ok = await api('devices/probe', 'POST', { ip: '127.0.0.1', port: openPort }); assert.equal(ok.ok, true); assert.match(ok.message, /Reached/);
   const no = await api('devices/probe', 'POST', { ip: '127.0.0.1', port: closedPort }); assert.equal(no.ok, false); assert.match(no.message, /No answer/);
   assert.equal((await S.raw('devices/probe', 'POST', { ip: '', port: 4370 })).status, 400); assert.equal((await S.raw('devices/probe', 'POST', { ip: '1.2.3.4', port: 99999 })).status, 400);
