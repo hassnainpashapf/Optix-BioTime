@@ -352,6 +352,8 @@ zkReportsRouter.get('/zkrep/:name', wrap((req, res) => {
   res.json({ name: rep.name, label: rep.label, from: rep.from, to: rep.to, legend: rep.legend, columns: rep.columns, count: rep.rows.length, rows: clean(rep.rows).slice((page - 1) * size, page * size) });
 }));
 zkReportsRouter.get('/zkrep/:name/export', wrap((req, res) => {
-  const rep = runReport(req.params.name, req.query), idx = req.query.cols ? String(req.query.cols).split(',').map(Number).filter(Number.isInteger) : null;
+  const rep = runReport(req.params.name, req.query);
+  if (req.query.export_range === 'page') { const page = Math.max(1, +req.query.page || 1), size = Math.min(20000, Math.max(1, +req.query.page_size || 20)); rep.rows = rep.rows.slice((page - 1) * size, page * size); }
+  const idx = req.query.cols ? String(req.query.cols).split(',').map(Number).filter(Number.isInteger) : null;
   exportFile(res, rep, String(req.query.format ?? 'csv'), idx);
 }));
