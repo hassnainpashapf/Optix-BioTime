@@ -156,7 +156,11 @@ try {
   await api(`leaves/${lv.id}/approve`, 'POST', {}); assert.equal((await att('leavelist?status=approved')).filter(r => r.id === lv.id).length, 1); await api(`leaves/${lv.id}/cancel`, 'POST', {}); assert.equal((await att('leavelist')).find(r => r.id === lv.id).approval_status, 'Revoked');
   // Keep these dates near today so the test remains valid around New Year;
   // a yearly leave quota is correctly zero for a future calendar year.
-  const bulkLeaveDay = addD(5), importLeaveDay = addD(15);
+  // Bulk leave needs a working day for both employees; a fixed offset can land
+  // on a weekend and correctly leave one or both records uncreated.
+  let bulkLeaveOffset = 5;
+  while ([0, 6].includes(new Date(Date.now() + bulkLeaveOffset * 864e5).getDay())) bulkLeaveOffset++;
+  const bulkLeaveDay = addD(bulkLeaveOffset), importLeaveDay = addD(15);
   const lb = await att('leavelist/bulk', 'POST', { by: 'dept', target_id: eng, start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual', auto_approve: true }); assert.equal(lb.added, 2); await rej(att('leavelist/bulk', 'POST', { start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual' }), /at least one employee/);
   const lb2 = await att('leavelist/bulk', 'POST', { employee_ids: [A.id], start_time: bulkLeaveDay, end_time: bulkLeaveDay, pay_code: 'Casual' }).catch(e => e.message); assert.match(String(lb2), /already has leave/);
   const li = await att('leavelist/import', 'POST', { csv: `code,type,from,to,reason\n${C.code},Sick,${importLeaveDay},${importLeaveDay},Fever\n${C.code},Nope,${importLeaveDay},${importLeaveDay}\n999,Sick,${importLeaveDay},${importLeaveDay}`, auto_approve: true }); assert.equal(li.added, 1); assert.equal(li.skipped, 2);
