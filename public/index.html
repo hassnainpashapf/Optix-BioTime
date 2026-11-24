@@ -442,6 +442,17 @@ html[data-skin=classic] #tr .tb{color:#fff;background:transparent}html[data-skin
 html[data-skin=classic] .bell{background:#e9494d;border:0;color:#fff}
 html[data-skin=classic] #user .av{width:44px;height:44px;border-radius:50%;background:#e8ebee;color:#8a9199}html[data-skin=classic] #user>span{color:#fff}
 html[data-skin=classic] #umenu{color:#333}
+html[data-skin=classic] #themebtn{display:none}
+html[data-skin=classic] #user .av{overflow:hidden;background:#f0f1f2}
+html[data-skin=classic] #user .av svg{width:38px;height:38px}
+html[data-skin=classic] #umenu{right:0;top:51px;width:235px;padding:0;border:0;border-radius:5px;box-shadow:0 3px 12px #0003;font-size:13px;overflow:visible}
+html[data-skin=classic] #umenu:before{content:"";position:absolute;right:41px;top:-10px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:10px solid #fff}
+html[data-skin=classic] #umenu .acctrow{display:flex;align-items:center;gap:10px;padding:10px 18px;border-radius:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html[data-skin=classic] #umenu .acctrow svg{width:15px;height:15px;flex:none;fill:#444}
+html[data-skin=classic] #umenu .acctsep{height:1px;background:#ddd;padding:0;margin:6px 0;border-radius:0;cursor:default}
+html[data-skin=classic] #umenu .acctsep:hover{background:#ddd}
+html[data-skin=classic] #umenu .acctrow[aria-disabled=true]{color:#999;cursor:default}
+html[data-skin=classic] #umenu .acctrow[aria-disabled=true]:hover{background:#fff}
 /* sidebar */
 html[data-skin=classic] #side{grid-column:1;grid-row:2/5;width:200px;height:auto;background:var(--slate);border:0;color:#fff;display:flex;flex-direction:column}
 html[data-skin=classic] #logo{display:none}
@@ -2140,11 +2151,21 @@ function drawFrame(p){const me=window.ME;if(!me)return;const app=$('#app'),mod=w
   $('#menu').innerHTML=home+(mod||q?(q?visMods():[mod]):visMods()).map(block).join('');
   $('#tabs').innerHTML=TABS.map(t=>`<div class="tab ${t===p?'on':''}" onclick="window.empId=null;go('${t}')">${esc(tabName(t))}${t==='Dashboard'?'':`<span class="x" onclick="closeTab('${t}',event)">&times;</span>`}</div>`).join('')}
 function menuSearch(){drawFrame(cur)}
+async function accountAction(action){$('#umenu').classList.remove('show');
+  if(action==='logout'){logout();return}
+  if(action==='theme'){toggleTheme();return}
+  if(action==='api'){go('Integrations');return}
+  if(action==='account'||action==='password'){window.stab='Access';window.curItem='Account & roles';await go('Settings');if(action==='password')document.getElementById('np')?.focus();return}
+  if(action==='language'){alert('English is the current interface language.');return}
+  if(action==='about'){try{const v=await api('system/update');alert(`OKT Attendance Server ${v.current||''}`)}catch(e){alert(e.message)}}
+}
 async function boot(){$('#login').style.display='none';window.scrollTo(0,0);$('#app').classList.add('on');$('#app').style.display='flex';
   let me;try{me=await api('me')}catch{return}window.ME=me;window.TABS=['Dashboard'];window.MOD=null;window.curItem=null;window.OPEN={};
-  $('#uav').textContent=(me.user||'A')[0].toUpperCase();$('#suav').textContent=(me.user||'A')[0].toUpperCase();$('#sun').textContent=me.user;$('#sur').textContent=me.role==='admin'?'Administrator':me.role.charAt(0).toUpperCase()+me.role.slice(1);
+  $('#uav').innerHTML='<svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="20" r="20" fill="#f0f1f2"/><path d="M8 36c1-7 6-9 12-9s11 2 12 9" fill="#999"/><path d="M13 13c0-5 3-8 7-8s7 3 7 8v7c-1 5-4 8-7 8s-6-3-7-8z" fill="#999"/></svg>';$('#suav').textContent=(me.user||'A')[0].toUpperCase();$('#sun').textContent=me.user;$('#sur').textContent=me.role==='admin'?'Administrator':me.role.charAt(0).toUpperCase()+me.role.slice(1);
   const canEdit=me.role==='admin'||Object.values(me.perms).some(v=>v==='edit'||String(v).startsWith('view+')),note=[];if(!canEdit)note.push('Read-only');if(me.scoped)note.push('Part of the company');
-  $('#umenu').innerHTML=`<div class="who">${esc(me.user)}${note.length?'<br><small>'+note.join(' - ')+'</small>':''}</div><div onclick="window.stab='Access';window.curItem='Account & roles';go('Settings')">Account & password</div><div onclick="toggleSkin()">Interface: switch to ${document.documentElement.dataset.skin==='classic'?'Modern':'Classic'}</div><div onclick="logout()">Log out</div>`;
+  const acctIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-5 3-7 8-7s8 2 8 7z"/></svg>',infoIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><rect x="11" y="10" width="2" height="7" fill="#fff"/><circle cx="12" cy="7" r="1" fill="#fff"/></svg>',editIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h14v3H6v12h13v-9h3v10H3zM12 16l2-5 7-7 3 3-7 7z"/></svg>';
+  const row=(label,icon,action,enabled=true)=>`<div class="acctrow" role="menuitem" ${enabled?`onclick="event.stopPropagation();accountAction('${action}')"`:'aria-disabled="true" title="Not available in OKT yet"'}>${icon}<span>${esc(label)}</span></div>`;
+  $('#umenu').setAttribute('role','menu');$('#umenu').innerHTML=row(me.user,acctIcon,'account')+row('About',infoIcon,'about')+row('API',infoIcon,'api')+row('Help',infoIcon,'help',false)+'<div class="acctsep"></div>'+row('Controller',editIcon,'controller',false)+row('Language',infoIcon,'language')+'<div class="acctsep"></div>'+row('Password Question',editIcon,'questions',false)+row('Password',editIcon,'password')+'<div class="acctsep"></div>'+row('Theme',infoIcon,'theme')+row('Logout',infoIcon,'logout');
   document.addEventListener('click',()=>$('#umenu').classList.remove('show'));
   cur='Dashboard';drawFrame('Dashboard');render('Dashboard');refreshBell();clearInterval(window.bellT);window.bellT=setInterval(refreshBell,60000)}
 $('#p').addEventListener('keydown',e=>e.key==='Enter'&&login());
