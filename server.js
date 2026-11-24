@@ -416,12 +416,13 @@ app.get('/api/system/update', async (_q, res) => {
 app.get('/api/dashboard', (_q, res) => {
   const t = dateStr(new Date());
   const rows = attendanceReport(t, t);
+  const yesterday = attendanceReport(addDays(t, -1), addDays(t, -1));
   const c = (s) => rows.filter(r => r.status === s).length;
   if (needsOtApproval()) syncOvertimeRequests(addDays(t, -31), t); // so pending overtime shows up without opening the Overtime page
   const sc = scopeClause('e'), n = (sql, ...x) => db.prepare(sql).get(...x).n, p = req_perms(_q);
-  if (p.attendance === 'none') return res.json({ employees: 0, present: 0, late: 0, absent: 0, leave: 0, devices: 0, pending_leaves: 0, pending_overtime: 0, pending_requests: 0, pending_devices: 0 });
+  if (p.attendance === 'none') return res.json({ employees: 0, present: 0, late: 0, absent: 0, leave: 0, overtime_yesterday: 0, devices: 0, pending_leaves: 0, pending_overtime: 0, pending_requests: 0, pending_devices: 0 });
   const cnt = (table, where) => n(`SELECT COUNT(*) n FROM ${table} t JOIN employees e ON e.id=t.employee_id WHERE ${where}${sc.sql}`, ...sc.args);
-  res.json({ employees: rows.length, present: rows.filter(r => PRESENT.includes(r.status)).length, late: c('Late'),
+  res.json({ employees: rows.length, present: rows.filter(r => PRESENT.includes(r.status)).length, late: c('Late'), overtime_yesterday: yesterday.filter(r => r.overtime_min > 0).length,
              absent: c('Absent') + c('Pending'), leave: c('Leave'), devices: p.devices !== 'none' ? n('SELECT COUNT(*) n FROM devices') : 0,
              pending_leaves: p.leave !== 'none' ? cnt('leaves', "t.status='pending'") : 0,
              pending_overtime: p.overtime !== 'none' ? cnt('overtime_requests', "t.status='pending' AND t.kind='auto'") : 0,

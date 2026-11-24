@@ -9,32 +9,47 @@ export function makePdf({ title, subtitle = '', columns, rows, pageSize = 'A4', 
   const sizes = { A4: [595, 842], Letter: [612, 792], Legal: [612, 1008] };
   const base = sizes[pageSize] || sizes.A4, portrait = orientation === 'portrait' || orientation === 'vertical' || (orientation === 'default' && columns.length <= 6);
   const [PW, PH] = portrait ? base : [base[1], base[0]];
-  // font size shrinks until the columns fit the page width, then text is trimmed
-  let fs = 8;
-  const natural = (size) => columns.map(c => Math.min(34, Math.max(String(c.label).length, ...rows.slice(0, 400).map(r => String(r[c.key] ?? '').length))) * size * 0.52 + 8);
-  let widths = natural(fs); const avail = PW - 2 * M;
-  while (widths.reduce((a, b) => a + b, 0) > avail && fs > 5.5) { fs -= 0.5; widths = natural(fs); }
-  const total = widths.reduce((a, b) => a + b, 0);
-  if (total > avail) widths = widths.map(w => (w * avail) / total);
+  // Wide attendance reports have dozens of fields. Put them on successive
+  // horizontal pages, repeating the identifying columns, instead of shrinking
+  // every value to one or two unreadable characters.
+  const fs = 8, avail = PW - 2 * M;
+  const natural = (c) => Math.min(150, Math.max(48, Math.min(34, Math.max(String(c.label).length, ...rows.slice(0, 400).map(r => String(r[c.key] ?? '').length))) * fs * 0.52 + 12));
+  const identity = columns.filter(c => ['Employee ID', 'First Name', 'Date'].includes(c.label));
+  const other = columns.filter(c => !identity.includes(c));
+  const groups = [];
+  if (columns.reduce((s, c) => s + natural(c), 0) <= avail) groups.push(columns);
+  else {
+    let group = [...identity], width = group.reduce((s, c) => s + natural(c), 0);
+    for (const c of other) {
+      const w = natural(c);
+      if (group.length > identity.length && width + w > avail) { groups.push(group); group = [...identity]; width = group.reduce((s, x) => s + natural(x), 0); }
+      group.push(c); width += w;
+    }
+    if (group.length) groups.push(group);
+  }
   const charW = fs * 0.52, rowH = fs + 6, top = PH - M - 44, bottom = M + 18;
   const perPage = Math.max(1, Math.floor((top - bottom) / rowH) - 1);
-  const pages = []; for (let i = 0; i < Math.max(rows.length, 1); i += perPage) pages.push(rows.slice(i, i + perPage));
+  const pages = [];
+  groups.forEach((cols, gi) => { for (let i = 0; i < Math.max(rows.length, 1); i += perPage) pages.push({ cols, gi, chunk: rows.slice(i, i + perPage) }); });
 
   const fit = (v, w) => { const s = String(v ?? '').replace(/[\r\n\t]+/g, ' '); const max = Math.max(1, Math.floor((w - 6) / charW)); return s.length > max ? s.slice(0, Math.max(1, max - 1)) + '.' : s; };
   const text = (x, y, s, bold = false) => `BT /${bold ? 'F2' : 'F1'} ${f2(fs)} Tf ${f2(x)} ${f2(y)} Td (${esc(enc(s))}) Tj ET\n`;
   const isNum = (v) => typeof v === 'number';
 
-  const streams = pages.map((chunk, pi) => {
+  const streams = pages.map(({ cols, gi, chunk }, pi) => {
+    const widths = cols.map(natural);
+    const total = widths.reduce((a, b) => a + b, 0);
+    if (total > avail) for (let i = 0; i < widths.length; i++) widths[i] = widths[i] * avail / total;
     let c = `BT /F2 14 Tf ${M} ${PH - M - 8} Td (${esc(enc(title))}) Tj ET\n`;
-    if (subtitle) c += `BT /F1 8.5 Tf ${M} ${PH - M - 22} Td 0.4 0.4 0.4 rg (${esc(enc(subtitle))}) Tj ET 0 g\n`;
+    if (subtitle || groups.length > 1) c += `BT /F1 8.5 Tf ${M} ${PH - M - 22} Td 0.4 0.4 0.4 rg (${esc(enc(subtitle + (groups.length > 1 ? `  -  Columns ${gi + 1} of ${groups.length}` : '')))}) Tj ET 0 g\n`;
     let y = top;
-    c += `0.91 0.93 0.96 rg ${M} ${f2(y - 4)} ${f2(widths.reduce((a, b) => a + b, 0))} ${f2(rowH)} re f 0 g\n`;
-    let x = M; columns.forEach((col, i) => { c += text(x + 3, y + 2, fit(col.label, widths[i]), true); x += widths[i]; });
+    c += `0.91 0.93 0.96 rg ${M} ${f2(y - 4)} ${f2(total)} ${f2(rowH)} re f 0 g\n`;
+    let x = M; cols.forEach((col, i) => { c += text(x + 3, y + 2, fit(col.label, widths[i]), true); x += widths[i]; });
     chunk.forEach((r, n) => {
       y -= rowH;
-      if (n % 2) c += `0.97 0.97 0.98 rg ${M} ${f2(y - 4)} ${f2(widths.reduce((a, b) => a + b, 0))} ${f2(rowH)} re f 0 g\n`;
+      if (n % 2) c += `0.97 0.97 0.98 rg ${M} ${f2(y - 4)} ${f2(total)} ${f2(rowH)} re f 0 g\n`;
       let cx = M;
-      columns.forEach((col, i) => { const v = r[col.key]; const s = fit(v, widths[i]); c += text(isNum(v) ? cx + widths[i] - 3 - s.length * charW : cx + 3, y + 2, s); cx += widths[i]; });
+      cols.forEach((col, i) => { const v = r[col.key]; const s = fit(v, widths[i]); c += text(isNum(v) ? cx + widths[i] - 3 - s.length * charW : cx + 3, y + 2, s); cx += widths[i]; });
     });
     c += `BT /F1 7.5 Tf ${M} ${M - 4} Td 0.4 0.4 0.4 rg (${esc(enc(`Page ${pi + 1} of ${pages.length}   -   ${rows.length} rows   -   generated ${new Date().toLocaleString('sv')}`))}) Tj ET 0 g\n`;
     return c;

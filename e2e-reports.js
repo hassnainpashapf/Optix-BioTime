@@ -54,7 +54,7 @@ try {
   assert.equal(pr.headers.get('content-type'), 'application/pdf'); assert.ok(txt.startsWith('%PDF-1.4') && txt.trimEnd().endsWith('%%EOF'));
   const sx = +txt.match(/startxref\n(\d+)/)[1]; assert.equal(txt.slice(sx, sx + 4), 'xref');
   [...txt.slice(sx).matchAll(/(\d{10}) 00000 n /g)].forEach((m, i) => assert.ok(txt.slice(+m[1]).startsWith(`${i + 1} 0 obj`), `xref entry ${i + 1}`));
-  assert.ok(txt.includes('(Daily attendance)') && txt.includes('(Alice)') && txt.includes('Page 1 of 1'));
+  assert.ok(txt.includes('(Daily attendance)') && txt.includes('(Alice)') && /Page 1 of \d+/.test(txt));
   assert.equal((await S.raw(`reports/daily/export?${q}&format=docx`)).status, 400);
 
   // spreadsheet formula safety (CSV is prefixed, xlsx stores text as text)

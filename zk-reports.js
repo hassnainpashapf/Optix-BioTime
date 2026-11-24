@@ -116,7 +116,7 @@ function dayObj(X, r) {
     'Clock In': r.in ?? '', 'Clock Out': stripOver(r.out), 'Duty Duration': work ? duty : 0, 'Break Duration': work ? h2(brk) : 0, 'Work Day': work ? 1 : 0, 'Worked Hrs': h2(worked),
     'Total Hrs': h2(worked + (r.out && worked && work ? brk : 0)), 'Break Out': work && sh ? (sh.break_start || sh.b_start || '') : '', 'Break In': work && sh ? (sh.break_end || sh.b_end || '') : '',
     'Break Hrs': work && r.out ? h2(brk) : 0, 'Total Hrs of Break': work && r.out ? h2(brk) : 0, 'Total OT': h2(r.overtime_min), 'Rule Total OT': h2(r.ot_calc_min), 'Unscheduled': !work ? h2(worked) : 0,
-    'Remaining': work ? Math.max(0, r2(duty - h2(worked))) : 0, 'Attendance': r.status === 'Present' ? 'Yes' : '', 'Device[In]': punches.length ? devName(X, punches[0].device_id) : '', 'Device[Out]': punches.length > 1 ? devName(X, punches.at(-1).device_id) : '',
+    'Remaining': work ? Math.max(0, r2(duty - h2(worked))) : 0, 'Attendance': r.status, 'Device[In]': punches.length ? devName(X, punches[0].device_id) : '', 'Device[Out]': punches.length > 1 ? devName(X, punches.at(-1).device_id) : '',
     'Work Code[In]': '', 'Work Code[Out]': '', 'Location[In]': '', 'Location[Out]': '' };
   const ex = [];
   if (r.status === 'Absent') ex.push('Absence'); else if (r.status === 'Missing Out') ex.push('Missing Check Out'); else if (r.status === 'Half Day') ex.push('Half Day');

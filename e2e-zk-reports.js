@@ -46,6 +46,8 @@ try {
 
   // Daily group
   const tt = await run('totalTimeCardReportV2'); assert.equal(tt.columns.length, 58 + 0, 'every Total Time Card column');
+  assert.ok(!tt.columns.find(c => c.label === 'Attendance').hide, 'attendance status is visible by default');
+  assert.equal(row(tt, A.code, '06').Attendance, 'Present', 'calculated attendance reaches the report');
   assert.deepEqual(tt.columns.slice(9, 14).map(c => c.label), ['Date', 'Weekday', 'Timetable', 'Check In', 'Check Out']);
   const al7 = row(tt, A.code, '07'); assert.deepEqual([al7['Late In(M)'], al7['Clock In'], al7['Timetable'], al7['Check In'], al7['Duty Duration'], al7.Exception], [30, '09:30', 'Office', '09:00', 9, 'Late In 30M']);
   assert.equal(row(tt, B.code, '06')['Early Out(M)'], 60); assert.equal(row(tt, B.code, '07')['Absence(H)'], 9);
@@ -103,6 +105,9 @@ try {
   const xr = await S.raw(`zkrep/empSummaryReport/export?${q}&format=xlsx`); assert.match(xr.headers.get('content-type'), /spreadsheetml/);
   assert.ok(strFromU8(unzipSync(new Uint8Array(await xr.arrayBuffer()))['xl/worksheets/sheet1.xml']).includes('>Regular(H)</t>'));
   const pdf = Buffer.from(await (await S.raw(`zkrep/dailyAbsentReport/export?${q}&format=pdf`)).arrayBuffer()).toString('latin1'); assert.ok(pdf.startsWith('%PDF-1.4') && pdf.includes('(Absent Report)'));
+  const cardPdf = Buffer.from(await (await S.raw(`zkrep/totalTimeCardReportV2/export?${q}&format=pdf`)).arrayBuffer()).toString('latin1');
+  assert.ok(cardPdf.includes('(Attendance)') && cardPdf.includes('(Present)') && cardPdf.includes('(Alice)'), 'wide PDF keeps names and attendance statuses');
+  assert.match(cardPdf, /Columns 2 of \d+/, 'wide PDF continues onto another readable column page');
   assert.equal((await S.raw(`zkrep/empSummaryReport/export?${q}&format=docx`)).status, 400);
   const lbx = await (await S.raw(`zkrep/leaveBalanceSummaryReport/export?start_date=2026&end_date=2026&format=csv`)).text(); assert.ok(lbx.includes('Annual Leave(Days) Total'));
 
