@@ -97,9 +97,9 @@ ZK.custom['zk:attgroup']=async id=>{const o=ZK.G['zk:attgroup'].o,row=id?ZK.G['z
 
 // ============================================================ Rule: global rule, department rule, group rule
 const GR_TABS=[['Basic Settings',[{k:'weekend1',l:'Weekend1',t:'select',opts:WK,blank:false},{k:'global_weekend1_color_setting',l:'Color Setting'},{k:'weekend2',l:'Weekend2',t:'select',opts:WK,blank:false},{k:'global_weekend2_color_setting',l:'Color Setting'},
-    {k:'punch_period',l:'Duplicate Punch Interval (Minute)',t:'number',req:true},{k:'start_of_week',l:'Start Off for the Week',t:'select',opts:[...WK.slice(1),[7,'System Based']],blank:false}]],
-  ['Rule for Non-scheduled Days',[{k:'max_hrs',l:'Max Work Hour (Hour)',t:'number',req:true},timeF('day_change','Day Change Time',{ph:'HH:MM:SS'}),{k:'paring_rule',l:'Paring Rule',t:'select',opts:PAIR,blank:false}]],
-  ['Overtime Rule',[{k:'ot_pay_code',l:'Overtime Assign To',t:'select',opts:OTC2,blank:false},{k:'overtime_policy',l:'Overtime Approval Policy',t:'select',opts:OTPOL,blank:false},{k:'enable_daily_ot',l:'Daily Overtime',t:'checkbox'},...tierFields('d'),
+    {k:'start_of_week',l:'Start Off for the Week',t:'select',req:true,opts:[...WK.slice(1),[7,'System Based']],blank:false}]],
+  ['Rule for Non-scheduled Days',[{k:'max_hrs',l:'Max Work Hour (Hour)',t:'number',req:true},timeF('day_change','Day Change Time',{ph:'HH:MM:SS'}),{k:'paring_rule',l:'Paring Rule',t:'select',opts:PAIR,blank:false},{k:'enable_daily_ot',l:'Daily Overtime',t:'checkbox'}]],
+  ['Overtime Rule',[{k:'ot_pay_code',l:'Overtime Assign To',t:'select',opts:OTC2,blank:false},{k:'overtime_policy',l:'Overtime Approval Policy',t:'select',opts:OTPOL,blank:false},...tierFields('d'),
     {k:'use_ot',l:'Overtime Rule',t:'select',opts:[[0,'Disable Overtime Calculation'],[1,'Calculation OT'],[2,'Approval OT'],[3,'Approval OT Priority']],blank:false},{k:'enable_compensatory',l:'Enable Compensatory',t:'checkbox'},
     {k:'enable_weekend_ot',l:'Weekend Overtime',t:'checkbox'},...tierFields('w1'),{k:'enable_holiday_ot',l:'Holiday Overtime',t:'checkbox'},...tierFields('h'),{k:'enable_weekly_ot',l:'Weekly Overtime',t:'checkbox'},...tierFields('t')]],
   ['Calculation Settings',[{k:'late_in2absence',l:'When late exceeds (Minute)',t:'number',req:true,hint:'Arriving later than this counts as Absent (0 = off)'},{k:'early_out2absence',l:'When early-leave exceeds (Minute)',t:'number',req:true},
@@ -139,7 +139,7 @@ const BR_FIELDS=[{k:'alias',l:'Name',req:true},{k:'calc_type',l:'Calculation Typ
   {k:'loss_rule',l:'Late In',t:'checkbox'},{k:'min_late_in',l:'Late In More Than (Minute)',t:'number'},{k:'loss_code',l:'Late In Assign To',t:'select',opts:[['','---------'],['Late In','Late In'],['Early Out','Early Out'],['Absence','Absence']],blank:false}];
 const brRow=r=>({...r,alias:r.name,period_start:r.start,period_end:r.end});
 attGrid('zk:breaktime','Break Time',{load:async()=>(await A('breaktimes')).map(brRow),defaults:{calc_type:0,period_start:'12:00',period_end:'13:00',end_margin:60,duration:60,with_salary:1,available_interval:1,min_early_in:0,min_late_in:0,minimum_duration:0},fields:BR_FIELDS,api:'att/breaktimes',
-  cols:[['Name','name',{link:true}],['Start Time',r=>r.start+':00'],['End Time',r=>r.end+':00'],['Duration','duration'],['With Salary',r=>yn(r.with_salary)],['Calculation Type',r=>r.calc_type?'Punch Time Is Required':'Auto Deduct']]},'shifts');
+  cols:[['Name','name',{link:true}],['Start Time',r=>r.start+':00'],['End Time',r=>r.end+':00'],['Duration','duration'],['Calculation Type',r=>r.calc_type?'Punch Time Is Required':'Auto Deduct']]},'shifts');
 
 const hm5=v=>String(v||'').slice(0,5);
 const ttCommon=(flex)=>[{k:'alias',l:'Name',req:true},{k:'pay_code',l:'Work Hours Assign To',t:'select',opts:OTC.filter(x=>x[0]===''||x[0]==='Regular'||x[0]==='Compensatory'||true),blank:false},
@@ -157,9 +157,8 @@ const ttDefaults=flex=>flex?{in_time:'00:00',out_time:'00:00',out_time_cross_day
 const ttForm=(flex,row)=>ZK.form((row?'Edit ':'Add ')+(flex?'Flexible':'Normal')+' Timetable',ttFields(flex),row?ttToForm(row):ttDefaults(flex),async b=>{for(const f of ['t1_hrs_from','t1_hrs_to','t2_hrs_from','t2_hrs_to','t3_hrs_from','t3_hrs_to'])if(b[f]==null)b[f]=0;
   if(row)return A('timetables/'+row.id,'PUT',b);return A('timetables/'+(flex?'flexible':'normal'),'POST',b)});
 attGrid('zk:timetable','Timetable',{load:()=>A('timetables'),defaults:{},fields:[],
-  cols:[['Name','name',{link:true}],['Type','type'],['Check-In','check_in'],['Check-Out','check_out'],['Work Time','work_time'],['Break Time','break_time'],['WorkDay','work_day'],['Work Type','work_type'],['Overtime','overtime'],['Color Settings',r=>swatch(r.color),{html:true}],['Compensate Duration','compensate']],
-  acts:[['Add',()=>ttForm(false)],['Delete'],['Add Normal Timetable',()=>ttForm(false)],['Add Flexible Timetable',()=>ttForm(true)],
-    ['Import',[['Import Normal Timetable',()=>attImport('Import Normal Timetable','att/timetables/import','name, check-in HH:MM, check-out HH:MM, workday',{mode:true,extra:{type:'normal'}})],['Import Flexible Timetable',()=>attImport('Import Flexible Timetable','att/timetables/import','name, work minutes, check-in, check-out',{mode:true,extra:{type:'flexible'}})]]]],
+  cols:[['Name','name',{link:true}],['Type','type'],['Check-In','check_in'],['Check-Out','check_out'],['Work Time','work_time'],['Break Time','break_time'],['WorkDay','work_day'],['Work Type','work_type'],['Overtime','overtime'],['Color Settings',r=>swatch(r.color),{html:true}]],
+  acts:[['Delete'],['Add Normal Timetable',()=>ttForm(false)],['Add Flexible Timetable',()=>ttForm(true)]],
   remove:id=>A('timetables/'+id,'DELETE'),api:'att/timetables'},'shifts');
 ZK.custom['zk:timetable']=id=>{const row=id?ZK.G['zk:timetable'].all.find(r=>r.id===id):null;ttForm(row?row.type_key==='flexible':false,row)};
 
@@ -167,9 +166,9 @@ const shFields=[{k:'alias',l:'Company Shift Name',req:true},{k:'code',l:'Short c
   {k:'workdays',l:'Work Days',hint:'0=Sunday, 1=Monday ... 6=Saturday, comma separated',req:true},{k:'grace_min',l:'Grace (Minute)',t:'number'},{k:'unit',l:'Unit',t:'select',opts:[['Day','Day'],['Week','Week'],['Month','Month']],blank:false},{k:'cycle',l:'Cycle',t:'number',req:true},{k:'auto_shift',l:'Auto Shift',t:'checkbox'},
   {k:'enable_ot_rule',l:'Weekly Overtime',t:'checkbox'},...tierFields('t')];
 const shToForm=r=>({...r,alias:r.name,auto_shift:!!r.auto_shift_key,enable_ot_rule:!!r.weekly_ot_key,...Object.fromEntries([1,2,3].flatMap(i=>[[`t${i}_pay_code`,(r.tiers[i-1]||{}).pay_code||''],[`t${i}_hrs_from`,(r.tiers[i-1]||{}).from||0],[`t${i}_hrs_to`,(r.tiers[i-1]||{}).to||0]]))});
-attGrid('Shifts','Shift',{details:true,load:()=>A('shiftdefs'),defaults:{workdays:'1,2,3,4,5,6',grace_min:10,unit:'Week',cycle:1},fields:shFields,api:'att/shiftdefs',
+attGrid('Shifts','Shift',{load:()=>A('shiftdefs'),defaults:{workdays:'1,2,3,4,5,6',grace_min:10,unit:'Week',cycle:1},fields:shFields,api:'att/shiftdefs',
   cols:[['Shift Name','name',{link:true}],['Timetable','timetable'],['Unit','unit'],['Cycle','cycle'],['Auto Shift','auto_shift'],['Weekly Overtime','weekly_ot']],
-  save:async(b,row)=>{for(const f of ['t1_hrs_from','t1_hrs_to','t2_hrs_from','t2_hrs_to','t3_hrs_from','t3_hrs_to'])if(b[f]==null)b[f]=0;return api(row?`att/shiftdefs/${row.id}`:'att/shiftdefs',row?'PUT':'POST',b)}},'shifts',tailOf('Shifts','Rotations, saved breaks, overtime policies and shift rules (advanced)'));
+  save:async(b,row)=>{for(const f of ['t1_hrs_from','t1_hrs_to','t2_hrs_from','t2_hrs_to','t3_hrs_from','t3_hrs_to'])if(b[f]==null)b[f]=0;return api(row?`att/shiftdefs/${row.id}`:'att/shiftdefs',row?'PUT':'POST',b)}},'shifts');
 ZK.custom['Shifts']=async id=>{const s=ZK.G['Shifts'],row=id?s.all.find(r=>r.id===id):null,tts=await A('timetables');
   const S=window.SHF={tts,id,unit:row?.unit||'Week',cycle:row?.cycle||1,sel:null,pat:row?.pattern||null,fields:[{k:'code',l:'Short code',hint:'Up to 4 letters, shown on the shift calendar'},{k:'grace_min',l:'Grace (Minute)',t:'number'}],otf:[{k:'enable_ot_rule',l:'Weekly Overtime',t:'checkbox'},...tierFields('t')],row};
   if(row&&!S.pat){const ids=tts.find(t=>t.id===row.timetable_id)?row.timetable_id:null,wd=String(row.workdays||'').split(',').map(Number);S.pat=[Array.from({length:7},(_,i)=>wd.includes(i)?ids:null)]}
@@ -206,11 +205,10 @@ ZK.schedDays=()=>{const r=window.ZSCHED,f=document.getElementById('zsd_f').value
   for(let n=0;d<=end&&n<62;n++,d=new Date(d.getTime()+864e5)){const s=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(s>=r.start_date&&s<=r.end_date)out.push(s)}
   box.innerHTML=out.length?`<table><tr><th>Date</th><th>Shift Name</th></tr>${out.map(x=>`<tr><td>${x}</td><td>${esc(r.shift||'')}</td></tr>`).join('')}</table>`:'<div style="text-align:center;color:#999;padding:14px">None</div>'};
 const schedPanel=(r,head)=>{window.ZSCHED=r;const m=today().slice(0,8),f=m+'01',t=m+'31';setTimeout(()=>ZK.schedDays(),0);return `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px"><input id="zsd_f" class="zd" type="text" value="${f}" style="width:100px;height:26px"><span>-</span><input id="zsd_t" class="zd" type="text" value="${t}" style="width:100px;height:26px"><a style="cursor:pointer" onclick="ZK.schedDays()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#333" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></a></div>${L2(head[0],head[1])}${L2('Employee Qty.',r.employees)}<div id="zsd_l" style="margin-top:8px"></div>`};
-const DRD={title:'Details',render:r=>schedPanel(r,['Employee',(r.first_name||'')+' '+(r.last_name||'')])};
-attGrid('Roster','Employee Schedule',{details:DRD,rowActs:false,load:()=>A('empsched'),defaults:{start_date:today(),end_date:today()},fields:empShiftFields,api:'att/empsched',
+attGrid('Roster','Employee Schedule',{rowActs:false,load:()=>A('empsched'),defaults:{start_date:today(),end_date:today()},fields:empShiftFields,api:'att/empsched',
   cols:[['Employee ID','code',{link:true}],['First Name','first_name'],['Last Name',r=>r.last_name||''],['Position',r=>r.position||''],['Department',r=>r.dept||''],['Shift Name','shift'],['Start Date','start_date'],['End Date','end_date']],
   acts:[['Delete'],['Add Schedule',()=>ZK.form('Add Schedule',[...pickFields,dateF('start_date','Start Date'),dateF('end_date','End Date'),{k:'shift_id',l:'Shift',t:'select',req:true,opts:shiftOpts},{k:'schedule_cover',l:'Cover existing schedule',t:'checkbox'}],{start_date:today(),end_date:today(),schedule_cover:true},async b=>bulkDone(await A('empsched','POST',{...pickBody(b),shift_id:b.shift_id,start_date:b.start_date,end_date:b.end_date,schedule_cover:b.schedule_cover})),'Save')],
-    ['Import',()=>attImport('Import Employee Schedule','att/empsched/import','employee ID, shift name, start date, end date',{mode:true})]]},'shifts',tailOf('Roster','Shift change and swap requests, rotation suggestions (advanced)'));
+    ['Import',()=>attImport('Import Employee Schedule','att/empsched/import','employee ID, shift name, start date, end date',{mode:true})]]},'shifts');
 ZK.custom['Roster']=id=>{const s=ZK.G['Roster'],row=id?s.all.find(r=>r.id===id):null;ZK.form((id?'Edit ':'Add ')+'Employee Schedule'+(id?` - ${row.code} ${row.name}`:''),id?empShiftFields.filter(f=>f.k!=='employee_id'):empShiftFields,row||s.o.defaults,
   async b=>{if(row){delete b.employee_id;return A('empsched/'+row.id,'PUT',b)}return A('empsched','POST',b)})};
 const ttOpts=async()=>(await A('timetables')).map(t=>[t.id,`${t.name} (${hm5(t.check_in)}-${hm5(t.check_out)})`]);
