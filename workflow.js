@@ -110,7 +110,7 @@ workflowRouter.delete('/workflow/roles/:id', (req, res) => {
   const r = db.prepare('SELECT * FROM wf_roles WHERE id=?').get(req.params.id); if (!r) return fail(res, 'No such role', 404); if (roleUsed(r.code)) return fail(res, 'A workflow still uses this role. Change the workflow first.');
   db.prepare('DELETE FROM wf_roles WHERE id=?').run(r.id); res.json({ ok: true });
 });
-workflowRouter.get('/workflow/roles/:id/members', (req, res) => { const sc = scopeClause('e'); res.json(db.prepare(`SELECT e.id, e.code, e.name, d.name AS dept FROM wf_role_members m JOIN employees e ON e.id=m.employee_id LEFT JOIN departments d ON d.id=e.department_id WHERE m.role_id=?${sc.sql} ORDER BY e.code`).all(req.params.id, ...sc.args)); });
+workflowRouter.get('/workflow/roles/:id/members', (req, res) => { const sc = scopeClause('e'); res.json(db.prepare(`SELECT e.id, e.code, e.name, e.last_name, d.name AS dept, p.name AS position FROM wf_role_members m JOIN employees e ON e.id=m.employee_id LEFT JOIN departments d ON d.id=e.department_id LEFT JOIN designations p ON p.id=e.designation_id WHERE m.role_id=?${sc.sql} ORDER BY e.code`).all(req.params.id, ...sc.args)); });
 workflowRouter.post('/workflow/roles/:id/members', (req, res) => {
   if (!db.prepare('SELECT 1 FROM wf_roles WHERE id=?').get(req.params.id)) return fail(res, 'No such role', 404); const ids = [...new Set((req.body?.employee_ids ?? []).map(Number))]; if (!ids.length) return fail(res, 'Choose at least one employee'); let added = 0;
   for (const id of ids.slice(0, 500)) if (db.prepare('SELECT 1 FROM employees WHERE id=?').get(id)) added += Number(db.prepare('INSERT OR IGNORE INTO wf_role_members(role_id, employee_id) VALUES(?,?)').run(req.params.id, id).changes);

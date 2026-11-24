@@ -16,7 +16,10 @@ try {
   await assert.rejects(api('workflow/roles', 'POST', { code: 'HR1', name: 'dup' }), /already used/);
   assert.equal((await api(`workflow/roles/${role}/members`, 'POST', { employee_ids: [H.id] })).added, 1); assert.equal((await api(`workflow/roles/${role}/members`, 'POST', { employee_ids: [H.id] })).added, 0);
   await assert.rejects(api(`workflow/roles/${role}/members`, 'POST', { employee_ids: [] }), /at least one/);
-  assert.equal((await api('workflow/roles')).find(r => r.id === role).employees, 1); assert.equal((await api(`workflow/roles/${role}/members`))[0].name, 'Hina Approver');
+  assert.equal((await api('workflow/roles')).find(r => r.id === role).employees, 1);
+  const member = (await api(`workflow/roles/${role}/members`))[0];
+  assert.equal(member.name, 'Hina Approver');
+  assert.ok(Object.hasOwn(member, 'last_name') && Object.hasOwn(member, 'position'));
 
   // ---- builder rules
   const rule = { code: 'R1', name: 'Sales leave', scope: 'department', target_id: dep, kind: 'leave', steps: [{ who: 'wrole:HR1' }, { who: 'admin' }], start_date: day(-5), end_date: day(60) };

@@ -69,10 +69,10 @@ const delCmds=async c=>{const i=need(c);if(!confirm(`Delete ${i.length} command(
 const cmdCols=[['Serial Number','sn'],['Device Name','device'],['Content',c=>`<code>${E(c.cmd)}</code>`,{html:true}]];
 ZK.grid('Device commands','Device Command',{module:D,load:()=>api('zkd/commands?scope=queue'),
   cols:[...cmdCols,['Commit Time','created'],['Transfer Time','sent']],
-  acts:[['Add',cmdAdd],['Delete',delCmds],['Bulk Delete',()=>bulkDel('queue','commands')],['Clear all ',clearAll('queue')]]});
+  acts:[['Delete',delCmds],['Bulk Delete',()=>bulkDel('queue','commands')],['Clear all ',clearAll('queue')]]});
 ZK.grid('zk:cmdlog','Command Log',{module:D,load:()=>api('zkd/commands?scope=log'),
   cols:[...cmdCols,['Commit Time','created'],['Transfer Time','sent'],['Return Time','returned'],['Return Value','value']],
-  acts:[['Add',cmdAdd],['Delete',delCmds],['Bulk Delete',()=>bulkDel('log','answered commands')],['Clear all ',clearAll('log')]]});
+  acts:[['Delete',delCmds],['Bulk Delete',()=>bulkDel('log','answered commands')],['Clear all ',clearAll('log')]]});
 
 // ---------- Device Parameter ----------
 ZK.grid('zk:devparam','Device Parameter',{module:D,load:()=>api('zkd/params'),api:'zkd/params',
@@ -129,7 +129,7 @@ async function bioPhotoAdd(){
 window.zkBioSave=async()=>{try{const f=document.getElementById('bp_f').files[0],u=document.getElementById('bp_u').files[0];if(!val('bp_e'))throw new Error('Choose the employee');if(!f)throw new Error('Choose the bio photo');await api('zkd/biophotos','POST',{employee_id:+val('bp_e'),bio_photo:await readFile(f),user_photo:u?await readFile(u):null,remark:val('bp_r')});document.getElementById('dvm').remove();go(cur)}catch(e){document.getElementById('om_e').textContent=e.message}};
 ZK.grid('zk:biophoto','Bio-Photo',{module:D,load:()=>api('zkd/biophotos'),api:'zkd/biophotos',
   cols:[['Employee ID','code'],['First Name','name'],['Last Name',()=>''],['Email','email'],['Serial Number','serial'],['User Photo',r=>thumb(r.user_photo),{html:true}],['Bio-Photo',r=>thumb(r.bio_photo),{html:true}],['Register Time','register_time'],['Remark','remark'],['Approval State','approval_state'],['Approval Time','approval_time']],
-  acts:[['Add',bioPhotoAdd],['Delete'],['Approve',async c=>{const r=await api('zkd/biophotos/approve','POST',{ids:need(c)});alert(`${r.done} approved, ${r.queued} command(s) queued for the devices`);c.reload()}],
+  acts:[['Delete'],['Approve',async c=>{const r=await api('zkd/biophotos/approve','POST',{ids:need(c)});alert(`${r.done} approved, ${r.queued} command(s) queued for the devices`);c.reload()}],
     ['QR Code',async()=>{const r=await api('zkd/biophotos/qr-info');orgModal('QR Code',`<p>Employees register their own photo at this address (employee portal):</p><p><b>${E(r.url)}</b></p><p class="mut sm">Print this address as a QR code with any QR generator and display it for staff.</p>`,"document.getElementById('dvm').remove()",'OK')}],
     ['Import Bio-Photo',async c=>{const fs=await U.pick('image/jpeg,image/png',true);if(!fs.length)return;let ok=0;const bad=[];for(const f of fs){const code=f.name.replace(/\.[^.]+$/,'').split(/[_\s]/)[0];try{await api('zkd/biophotos','POST',{code,bio_photo:await readFile(f)});ok++}catch(e){bad.push(f.name+' ('+e.message+')')}}alert(`${ok} imported`+(bad.length?'\nNot imported (file name = Employee ID):\n'+bad.slice(0,6).join('\n'):''));c.reload()}]]});
 
@@ -141,13 +141,13 @@ ZK.grid('zk:transaction','Transaction',{module:D,
   load:()=>{const f=window.txf||{};return api('zkd/transactions?'+new URLSearchParams(Object.entries(f).filter(x=>x[1])))},
   remove:id=>api('zkd/transactions/delete','POST',{ids:[id]}),
   cols:[['Employee ID','code'],['First Name','name'],['Last Name','last_name'],['Department','dept'],['Position','position'],['Date',r=>`<span style="white-space:nowrap">${r.ts.slice(0,10)}</span>`,{html:true}],['Time',r=>`<span style="white-space:nowrap">${r.ts.slice(11)}</span>`,{html:true}],['Punch State','state'],['Verification Type','verify_type'],['Work Code','workcode'],['Area Name','area'],['Serial Number','sn'],['Device Name','device'],['GPS',r=>r.latitude!=null?`<a class="zl" target="_blank" href="https://www.google.com/maps?q=${r.latitude},${r.longitude}">Map</a>`:'',{html:true}],['Longitude','longitude'],['Latitude','latitude'],['Capture',r=>r.photo_id?`<a class="zl" onclick="zkTxPic(${r.photo_id})">View</a>`:'',{html:true}],['With Mask','with_mask'],['Temperature',r=>r.temp_c!=null?r.temp_c+' °C':''],['Upload Time','uploaded']],
-  acts:[['Add',()=>ZK.form('Add Transaction',[{k:'emp',l:'Employee',t:'select',opts:async()=>(await api('employees?status=active')).map(e=>[e.code,e.code+' - '+e.name]),req:true},{k:'ts',l:'Punch time',t:'datetime',req:true}],{ts:new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,16).replace('T',' ')},async b=>{const r=await api('logs/manual','POST',{emp_code:b.emp,ts:b.ts});if(!r.added)throw new Error('This punch already exists')})],['Delete'],
+  acts:[
     ['Upload USB Transactions',async c=>{const fs=await U.pick('.csv,.txt,.dat,text/csv');if(!fs[0])return;const r=await api('logs/import','POST',{csv:await fs[0].text()});alert(`${r.parsed} line(s) read, ${r.added} new punch(es) added`);c.reload()}],
     ['Download Attendance Photo',()=>ZK.form('Download Attendance Photo',[{k:'from',l:'From date',t:'date'},{k:'to',l:'To date',t:'date'}],{from:addD(today(),-6),to:today()},async b=>{const r=await api('zkd/transactions/photos','POST',b);alert(`Asked ${r.devices} device(s) to upload their attendance photos`)},'Request')]]});
 
 // ---------- Logs ----------
 const clearBefore=(path,title)=>c=>ZK.form('Bulk Delete',[{k:'before',l:'Delete records uploaded before',t:'date',req:true}],{before:today()},async b=>{const r=await api('zkd/'+path+'/clear','POST',{before:b.before});alert(r.deleted+' removed')},'Delete');
-const logActs=(path,more)=>[['Add'],['Delete',async c=>{const i=need(c);if(!confirm(`Delete ${i.length} record(s)?`))return;await api(`zkd/${path}/delete`,'POST',{ids:i});c.reload()}],...(more?[['Bulk Delete',clearBefore(path)]]:[])];
+const logActs=(path,more)=>[['Delete',async c=>{const i=need(c);if(!confirm(`Delete ${i.length} record(s)?`))return;await api(`zkd/${path}/delete`,'POST',{ids:i});c.reload()}],...(more?[['Bulk Delete',clearBefore(path)]]:[])];
 const devF={k:'device_id',l:'Device',t:'select',opts:()=>U.devOpts(),req:true};
 const nowS=()=>new Date(Date.now()-new Date().getTimezoneOffset()*60000).toISOString().slice(0,19).replace('T',' ');
 ZK.grid('zk:oplog','Operation Log',{module:D,acts:[['Delete']],rowActs:false,load:()=>api('zkd/oplog'),api:'zkd/oplog',cols:[['Serial Number','sn'],['Device Name','device'],['Time Zone','tz'],['Administrator','admin'],['Action','action'],['Object','object'],['Parameters','params'],['Action Time','action_time'],['Upload Time','upload_time']],
@@ -164,21 +164,22 @@ ZK.grid('zk:uplog','Upload Log',{module:D,acts:[['Delete']],rowActs:false,load:(
 const appAct=(action,ask)=>async c=>{const i=need(c);if(ask&&!confirm(ask.replace('#',i.length)))return;await api('zkd/app/accounts/action','POST',{ids:i,action});c.reload()};
 ZK.grid('zk:appacct','Accounts',{module:'employees',load:()=>api('zkd/app/accounts'),
   cols:[['User Name','user'],['Login Time','login_time'],['Last Active','last_active'],['Client Id','client_id'],['Device Token','token'],['Client Category','category'],['Running Status','running'],['APP Status','status']],
-  acts:[['Add',async()=>{const em=await U.empOpts();ZK.form('Add App Account',[{k:'employee_id',l:'For',t:'select',opts:em,blank:'My own login (staff phone)'}],{},async b=>{const r=await api('zkd/app/accounts/pair','POST',{employee_id:b.employee_id?+b.employee_id:undefined});alert(`Enter this pairing code in the phone app within ${Math.round(r.expires_in/60)} minutes:\n\n${r.code}`)},'Create code')}],
-    ['Delete',appAct('delete','Delete # app account(s)? The phone has to be paired again.')],
+  acts:[['Delete',appAct('delete','Delete # app account(s)? The phone has to be paired again.')],
     ['Push Notification',async c=>{const i=need(c);ZK.form('Push Notification',[{k:'title',l:'Title',req:true},{k:'body',l:'Content',t:'textarea'}],{},async b=>{const r=await api('zkd/app/accounts/push','POST',{ids:i,title:b.title,body:b.body});alert(r.sent+' notification(s) sent')},'Send')}],
     ['Force Offline',appAct('offline','Sign # phone(s) out now?')],['Disable',appAct('disable')],['Enable',appAct('enable')]]});
 ZK.grid('Announcements','Announcement',{module:'organization',load:()=>api('zkd/ann/list'),api:'zkd/ann',
   cols:[['Subject','title'],['Category',r=>r.category||(r.employee_id?'Private':'Public')],['Employee ID','code'],['Content','body'],['Sender','created_by'],['System Sender',r=>r.system_sender?'Yes':'No'],['Notice Time','created']],
   fields:[{k:'title',l:'Subject',req:true},{k:'category',l:'Category'},{k:'employee_id',l:'Employee (blank = everyone)',t:'select',opts:()=>U.empOpts(),blank:'Everyone'},{k:'body',l:'Content',t:'textarea'}],
   save:b=>api('zkd/ann','POST',{title:b.title,category:b.category,employee_id:b.employee_id?+b.employee_id:null,body:b.body}),
-  acts:[['Add'],['Delete'],['Push Public Notice',async c=>{const i=need(c);const r=await api('zkd/ann/push','POST',{ids:i,mode:'public'});alert(r.sent+' notice(s) sent to the employees\' apps');c.reload()}],['Push Private Notice',async c=>{const i=need(c);const r=await api('zkd/ann/push','POST',{ids:i,mode:'private'});alert(r.sent+' notice(s) sent');c.reload()}]]});
+  acts:[['Delete'],['Push Public Notice',async c=>{const i=need(c);const r=await api('zkd/ann/push','POST',{ids:i,mode:'public'});alert(r.sent+' notice(s) sent to the employees\' apps');c.reload()}],['Push Private Notice',async c=>{const i=need(c);const r=await api('zkd/ann/push','POST',{ids:i,mode:'private'});alert(r.sent+' notice(s) sent');c.reload()}]]});
 ZK.grid('zk:appnotice','Notice',{module:'employees',load:()=>api('zkd/app/notices'),
+  acts:[['Delete']],
   remove:id=>api('zkd/app/notices/delete','POST',{ids:[id]}),
   cols:[['Receiver',r=>r.audience==='employee'?((r.code||'')+' '+(r.employee||'')).trim():'All staff'],['Category',r=>String(r.kind||'general').replace(/_/g,' ')],['Content',r=>r.title+(r.body?' - '+r.body:'')],['Sender',()=>'System'],['Send Time','created'],['Read Status',r=>r.is_read?'Read':'Unread']],
   fields:[{k:'employee_id',l:'Receiver',t:'select',opts:()=>U.empOpts(),blank:'All staff'},{k:'category',l:'Category'},{k:'title',l:'Content',req:true},{k:'body',l:'Details',t:'textarea'}],
   save:b=>api('zkd/app/notices','POST',{employee_id:b.employee_id?+b.employee_id:null,category:b.category,title:b.title,body:b.body})});
 ZK.grid('zk:applog','Mobile Operation Log',{module:'employees',load:()=>api('zkd/app/log'),
+  acts:[['Delete']],
   remove:id=>api('zkd/app/log/delete','POST',{ids:[id]}),
   cols:[['User','user'],['Request Time','ts'],['Path','path'],['Query Params','query'],['Method','method'],['Remote Address','ip'],['Status','status'],['Time',r=>r.ms+' ms'],['Errors','error']],
   fields:[{k:'user',l:'User'},{k:'path',l:'Path',req:true},{k:'method',l:'Method'},{k:'ip',l:'Remote Address'},{k:'status',l:'Status',t:'number'}],
