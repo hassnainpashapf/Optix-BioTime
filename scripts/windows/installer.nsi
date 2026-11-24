@@ -36,6 +36,8 @@ Page custom DatabasePage
 Page custom BackupPage BackupLeave
 Page custom ReadyPage
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_FINISHPAGE_TITLE "ZKT Attendance setup complete"
+!define MUI_FINISHPAGE_TEXT "The server has been installed and started. No computer restart is required. Select Finish to close setup."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_TEXT "Open ZKT in the browser"
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenBrowser
@@ -195,17 +197,22 @@ FunctionEnd
 Section "ZKT" SecMain
   SetShellVarContext all
   ; stop an older copy first (upgrade)
+  DetailPrint "Stopping the previous ZKT service..."
   InitPluginsDir
   File "/oname=$PLUGINSDIR\remove-task.ps1" "stage\remove-task.ps1"
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$PLUGINSDIR\remove-task.ps1"'
+  DetailPrint "Installing server files..."
   SetOutPath "$INSTDIR"
   File "stage\node.exe"
   File "stage\install-task.ps1"
   File "stage\remove-task.ps1"
+  File "stage\service-console.ps1"
+  File "stage\check-db.cjs"
   File "stage\okt.ico"
   SetOutPath "$INSTDIR\app"
   File /r "stage\app\*.*"
   ; settings and data live in ProgramData so an upgrade or uninstall never touches them
+  DetailPrint "Preparing database and backup folders..."
   CreateDirectory "$APPDATA\OKT"
   IfFileExists "$APPDATA\OKT\server.json" settingsDone 0
     FileOpen $0 "$APPDATA\OKT\server.json" w
@@ -221,13 +228,22 @@ Section "ZKT" SecMain
   FileWrite $0 "$BackupDir"
   FileClose $0
   ; firewall: allow node.exe in, whatever ports you choose later in Server Setting
+  DetailPrint "Applying firewall choice..."
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="OKT server"'
   ${If} $AddFirewall == ${BST_CHECKED}
     nsExec::ExecToLog 'netsh advfirewall firewall add rule name="OKT server" dir=in action=allow program="$INSTDIR\node.exe" enable=yes profile=any'
   ${EndIf}
   ; start with Windows, restart if it stops
-  nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install-task.ps1" -InstallDir "$INSTDIR"'
+  DetailPrint "Starting ZKT Attendance Server..."
+  nsExec::ExecToStack 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install-task.ps1" -InstallDir "$INSTDIR"'
+  Pop $0
+  Pop $1
+  ${If} $0 != 0
+    MessageBox MB_ICONSTOP "The server could not start. Setup stopped before reporting success. Details: $1"
+    Abort
+  ${EndIf}
   ; shortcuts
+  DetailPrint "Creating Start Menu and desktop shortcuts..."
   Delete "$DESKTOP\OKT Attendance.lnk"
   RMDir /r "$SMPROGRAMS\OKT"
   CreateDirectory "$SMPROGRAMS\ZKT"
@@ -235,6 +251,8 @@ Section "ZKT" SecMain
   WriteINIStr "$SMPROGRAMS\ZKT\Open ZKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
   WriteINIStr "$SMPROGRAMS\ZKT\Open ZKT.url" "InternetShortcut" "IconIndex" "0"
   CreateShortcut "$DESKTOP\ZKT Attendance.lnk" "http://localhost:$HttpPort" "" "$INSTDIR\okt.ico" 0
+  CreateShortcut "$SMPROGRAMS\ZKT\Service Console.lnk" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\service-console.ps1" -InstallDir "$INSTDIR"' "$INSTDIR\okt.ico" 0
+  CreateShortcut "$SMSTARTUP\ZKT Service Tray.lnk" "powershell.exe" '-NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\service-console.ps1" -InstallDir "$INSTDIR" -Tray' "$INSTDIR\okt.ico" 0
   CreateShortcut "$SMPROGRAMS\ZKT\Uninstall ZKT.lnk" "$INSTDIR\Uninstall.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\OKT" "InstallDir" "$INSTDIR"
@@ -252,11 +270,14 @@ Section "Uninstall"
   RMDir /r "$SMPROGRAMS\ZKT"
   RMDir /r "$SMPROGRAMS\OKT"
   Delete "$DESKTOP\ZKT Attendance.lnk"
+  Delete "$SMSTARTUP\ZKT Service Tray.lnk"
   Delete "$DESKTOP\OKT Attendance.lnk"
   RMDir /r "$INSTDIR\app"
   Delete "$INSTDIR\node.exe"
   Delete "$INSTDIR\install-task.ps1"
   Delete "$INSTDIR\remove-task.ps1"
+  Delete "$INSTDIR\service-console.ps1"
+  Delete "$INSTDIR\check-db.cjs"
   Delete "$INSTDIR\okt.ico"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"

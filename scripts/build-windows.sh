@@ -15,7 +15,7 @@ cp -R public "$STAGE/app/public"; cp package.json package-lock.json "$STAGE/app/
 CACHE=${CACHE:-$HOME/.cache/optix-build}; mkdir -p "$CACHE"; ZIP="$CACHE/node-$NODEVER-win-x64.zip"
 [ -f "$ZIP" ] || curl -fL -o "$ZIP" "https://nodejs.org/dist/$NODEVER/node-$NODEVER-win-x64.zip"
 unzip -o -j "$ZIP" "node-$NODEVER-win-x64/node.exe" -d "$STAGE" >/dev/null
-cp scripts/windows/install-task.ps1 scripts/windows/remove-task.ps1 "$STAGE/"
+cp scripts/windows/install-task.ps1 scripts/windows/remove-task.ps1 scripts/windows/service-console.ps1 scripts/windows/check-db.cjs "$STAGE/"
 cp assets/okt.ico "$STAGE/okt.ico"
 cp scripts/windows/installer.nsi build/win/installer.nsi
 ( cd build/win && makensis -V2 -DVERSION="$VER" -DOUTFILE="$PWD/../../$OUT/ZKT-Setup-$VER.exe" installer.nsi )

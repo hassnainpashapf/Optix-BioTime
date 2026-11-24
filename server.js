@@ -70,6 +70,18 @@ const tokens = new Map(); // token -> { user, role, exp }
 sysHooks.tokens = tokens;
 const TOKEN_MS = 12 * 3600 * 1000;
 const fails = new Map(); // ip -> { n, until }
+app.get('/api/setup/status', (_req, res) => res.json({ required: process.env.FIRST_RUN_SETUP === '1' && !db.prepare('SELECT 1 FROM users').get() }));
+app.post('/api/setup', (req, res) => {
+  if (process.env.FIRST_RUN_SETUP !== '1' || db.prepare('SELECT 1 FROM users').get()) return res.status(409).json({ error: 'Setup is already complete' });
+  if (!['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.ip)) return res.status(403).json({ error: 'Create the first administrator on this computer' });
+  const { username, email, password, confirm } = req.body || {};
+  const name = String(username || '').trim(), mail = String(email || '').trim(), pw = String(password || '');
+  if (!/^[A-Za-z0-9_.-]{3,40}$/.test(name)) return res.status(400).json({ error: 'Username must be 3–40 letters, numbers, dots, dashes or underscores' });
+  if (mail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mail)) return res.status(400).json({ error: 'Enter a valid email address' });
+  if (pw.length < 10 || pw !== confirm) return res.status(400).json({ error: 'Use a matching password of at least 10 characters' });
+  db.prepare('INSERT INTO users(username,pass,role,email) VALUES(?,?,?,?)').run(name, hash(pw), 'admin', mail || null);
+  res.json({ ok: true });
+});
 app.post('/api/login', (req, res) => {
   const f = fails.get(req.ip) ?? { n: 0, until: 0 };
   if (f.until > Date.now()) return res.status(429).json({ error: 'Too many attempts, wait a minute' });

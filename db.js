@@ -57,6 +57,7 @@ const addCol = (t, c, def) => {
   if (!db.prepare(`PRAGMA table_info(${t})`).all().some(r => r.name === c)) db.exec(`ALTER TABLE ${t} ADD COLUMN ${c} ${def}`);
 };
 addCol('employees', 'salary', 'REAL DEFAULT 0');
+addCol('users', 'email', 'TEXT');
 addCol('employees', 'join_date', 'TEXT'); // days before this are never counted absent
 db.exec(`CREATE TABLE IF NOT EXISTS device_commands(id INTEGER PRIMARY KEY, device_id INTEGER NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
   cmd TEXT NOT NULL, status TEXT DEFAULT 'pending', result TEXT, created TEXT DEFAULT (datetime('now','localtime')))`);
@@ -355,7 +356,7 @@ export function setSettings(body) {
 export const hash = (p) => { const s = randomBytes(16).toString('hex'); return s + ':' + scryptSync(p, s, 32).toString('hex'); };
 export const verify = (p, h) => { const [s, k] = h.split(':'); return timingSafeEqual(scryptSync(p, s, 32), Buffer.from(k, 'hex')); };
 
-if (!db.prepare('SELECT 1 FROM users').get()) {
+if (process.env.FIRST_RUN_SETUP !== '1' && !db.prepare('SELECT 1 FROM users').get()) {
   const pw = process.env.ADMIN_PASSWORD || 'admin123';
   db.prepare('INSERT INTO users(username,pass) VALUES(?,?)').run('admin', hash(pw));
   console.log(`Default login: admin / ${pw}  (change it)`);

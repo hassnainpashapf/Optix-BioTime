@@ -10,7 +10,7 @@ const data = process.env.OPTIX_DATA || (process.platform === 'win32' ? join(proc
 mkdirSync(data, { recursive: true });
 let savedBackup = '';
 try { savedBackup = readFileSync(join(data, 'backup-path.txt'), 'utf8').trim(); } catch {}
-const env = { ...process.env, DB_FILE: process.env.DB_FILE || join(data, 'okt.db'), BACKUP_DIR: process.env.BACKUP_DIR || savedBackup || join(data, 'backups'), LOG_DIR: process.env.LOG_DIR || join(data, 'logs'), UPLOAD_DIR: process.env.UPLOAD_DIR || join(data, 'uploads'), CERT_DIR: process.env.CERT_DIR || join(data, 'certs'), SERVER_CONFIG: process.env.SERVER_CONFIG || join(data, 'server.json') };
+const env = { ...process.env, FIRST_RUN_SETUP: process.env.FIRST_RUN_SETUP || (process.platform === 'win32' ? '1' : '0'), DB_FILE: process.env.DB_FILE || join(data, 'okt.db'), BACKUP_DIR: process.env.BACKUP_DIR || savedBackup || join(data, 'backups'), LOG_DIR: process.env.LOG_DIR || join(data, 'logs'), UPLOAD_DIR: process.env.UPLOAD_DIR || join(data, 'uploads'), CERT_DIR: process.env.CERT_DIR || join(data, 'certs'), SERVER_CONFIG: process.env.SERVER_CONFIG || join(data, 'server.json') };
 let quick = 0, child, stopping = false;
 const run = () => {
   const t0 = Date.now();
