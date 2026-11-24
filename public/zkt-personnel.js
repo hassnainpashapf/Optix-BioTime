@@ -134,7 +134,7 @@ const zxAll=(x,o,wf)=>{const t=zxTabs(x,o,wf);return Object.values(t).flat().fil
 window.zkEmpDel=async id=>{if(!confirm('Delete this employee?'))return;try{await api('employees/'+id,'DELETE');go(cur)}catch(e){alert(e.message)}};
 window.zxShow=(id,b)=>{const el=document.getElementById(id);el.classList.toggle('msk');b.textContent=el.classList.contains('msk')?'Show':'Hide'};
 window.zxToggle=el=>{const on=el.dataset.v!=='1';el.dataset.v=on?1:0;el.classList.toggle('on',on);el.querySelector('b').textContent=on?'Yes':'No'};
-window.zxEnroll=()=>alert('Press Confirm to save the employee. OKT then offers to open the enrolment screen on a device, where the person puts the finger.');
+window.zxEnroll=()=>alert('Press Confirm to save the employee. ZKT then offers to open the enrolment screen on a device, where the person puts the finger.');
 {const _save=window.zkEmpSave;window.zkEmpSave=()=>window.ZKEDIT?zkEmpSaveEdit():_save()}
 window.zkEmpSaveEdit=async()=>{const id=window.ZKEDIT,err=document.getElementById('om_e');try{const cf=await cfList(),bd=readEmpForm(cf);delete bd.code;await api('employees/'+id,'PUT',bd);await api(`zkp/employees/${id}/extra`,'PUT',zxRead());
   const ph=window.ZXPH||{};try{if(ph.photo)await api(`employees/${id}/photo`,'POST',{data:ph.photo});if(ph.bio)await api('zkd/biophotos','POST',{employee_id:id,bio_photo:ph.bio,user_photo:ph.photo||null,remark:''})}catch(e){alert('Saved, but the photo was not: '+e.message)}

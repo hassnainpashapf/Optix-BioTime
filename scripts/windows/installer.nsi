@@ -6,13 +6,13 @@ Unicode true
 !ifndef VERSION
   !define VERSION "1.0.0"
 !endif
-Name "OKT Attendance Server ${VERSION}"
+Name "ZKT Attendance Server ${VERSION}"
 OutFile "${OUTFILE}"
 InstallDir "$PROGRAMFILES64\OKT"
 InstallDirRegKey HKLM "Software\OKT" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
-BrandingText "OKT"
+BrandingText "ZKT"
 Icon "stage\okt.ico"
 !define MUI_ABORTWARNING
 
@@ -28,7 +28,7 @@ Var DlgHttpsOn
 Page custom PortsPage PortsLeave
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_FINISHPAGE_RUN
-!define MUI_FINISHPAGE_RUN_TEXT "Open OKT in the browser"
+!define MUI_FINISHPAGE_RUN_TEXT "Open ZKT in the browser"
 !define MUI_FINISHPAGE_RUN_FUNCTION OpenBrowser
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -45,7 +45,7 @@ Function PortsPage
   !insertmacro MUI_HEADER_TEXT "Server ports" "Choose how the web service listens. You can change this later under System > Server Setting."
   nsDialogs::Create 1018
   Pop $0
-  ${NSD_CreateLabel} 0 0 100% 24u "HTTP is used by the devices and by browsers on your network. HTTPS (with a certificate OKT creates for you) is needed for the browser fingerprint and for phone GPS."
+  ${NSD_CreateLabel} 0 0 100% 24u "HTTP is used by the devices and by browsers on your network. HTTPS (with a certificate the app creates for you) is needed for the browser fingerprint and for phone GPS."
   Pop $0
   ${NSD_CreateLabel} 0 34u 90u 12u "HTTP port"
   Pop $0
@@ -87,7 +87,7 @@ Function OpenBrowser
   ExecShell "open" "http://localhost:$HttpPort"
 FunctionEnd
 
-Section "OKT" SecMain
+Section "ZKT" SecMain
   SetShellVarContext all
   ; stop an older copy first (upgrade)
   InitPluginsDir
@@ -116,17 +116,19 @@ Section "OKT" SecMain
   ; start with Windows, restart if it stops
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install-task.ps1" -InstallDir "$INSTDIR"'
   ; shortcuts
-  CreateDirectory "$SMPROGRAMS\OKT"
-  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
-  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
-  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "IconIndex" "0"
-  CreateShortcut "$DESKTOP\OKT Attendance.lnk" "http://localhost:$HttpPort" "" "$INSTDIR\okt.ico" 0
-  CreateShortcut "$SMPROGRAMS\OKT\Uninstall OKT.lnk" "$INSTDIR\Uninstall.exe"
+  Delete "$DESKTOP\OKT Attendance.lnk"
+  RMDir /r "$SMPROGRAMS\OKT"
+  CreateDirectory "$SMPROGRAMS\ZKT"
+  WriteINIStr "$SMPROGRAMS\ZKT\Open ZKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
+  WriteINIStr "$SMPROGRAMS\ZKT\Open ZKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
+  WriteINIStr "$SMPROGRAMS\ZKT\Open ZKT.url" "InternetShortcut" "IconIndex" "0"
+  CreateShortcut "$DESKTOP\ZKT Attendance.lnk" "http://localhost:$HttpPort" "" "$INSTDIR\okt.ico" 0
+  CreateShortcut "$SMPROGRAMS\ZKT\Uninstall ZKT.lnk" "$INSTDIR\Uninstall.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   WriteRegStr HKLM "Software\OKT" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "DisplayName" "OKT Attendance Server"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "DisplayName" "ZKT Attendance Server"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "Publisher" "OKT"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "Publisher" "Optix"
   WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "UninstallString" '"$INSTDIR\Uninstall.exe"'
   WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "NoModify" 1
 SectionEnd
@@ -135,7 +137,9 @@ Section "Uninstall"
   SetShellVarContext all
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\remove-task.ps1"'
   nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="OKT server"'
+  RMDir /r "$SMPROGRAMS\ZKT"
   RMDir /r "$SMPROGRAMS\OKT"
+  Delete "$DESKTOP\ZKT Attendance.lnk"
   Delete "$DESKTOP\OKT Attendance.lnk"
   RMDir /r "$INSTDIR\app"
   Delete "$INSTDIR\node.exe"
@@ -146,5 +150,5 @@ Section "Uninstall"
   RMDir "$INSTDIR"
   DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT"
   DeleteRegKey HKLM "Software\OKT"
-  MessageBox MB_OK "OKT was removed. Your data (database, backups, settings) is kept in $APPDATA\OKT. Delete that folder if you do not need it."
+  MessageBox MB_OK "ZKT was removed. Your data (database, backups, settings) is kept in $APPDATA\OKT. Delete that folder if you do not need it."
 SectionEnd

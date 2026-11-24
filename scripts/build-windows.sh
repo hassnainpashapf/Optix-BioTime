@@ -18,5 +18,5 @@ unzip -o -j "$ZIP" "node-$NODEVER-win-x64/node.exe" -d "$STAGE" >/dev/null
 cp scripts/windows/install-task.ps1 scripts/windows/remove-task.ps1 "$STAGE/"
 cp assets/okt.ico "$STAGE/okt.ico"
 cp scripts/windows/installer.nsi build/win/installer.nsi
-( cd build/win && makensis -V2 -DVERSION="$VER" -DOUTFILE="$PWD/../../$OUT/OKT-Setup-$VER.exe" installer.nsi )
-ls -la "$OUT/OKT-Setup-$VER.exe"
+( cd build/win && makensis -V2 -DVERSION="$VER" -DOUTFILE="$PWD/../../$OUT/ZKT-Setup-$VER.exe" installer.nsi )
+ls -la "$OUT/ZKT-Setup-$VER.exe"

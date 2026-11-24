@@ -394,9 +394,9 @@ const newerVersion = (a, b) => { const x = versionParts(a), y = versionParts(b);
 app.get('/api/system/update', async (_q, res) => {
   if (Date.now() - updateCache.at < 10 * 60 * 1000 && updateCache.value) return res.json(updateCache.value);
   try {
-    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { 'User-Agent': 'OKT-Attendance' }, signal: AbortSignal.timeout(5000) });
+    const r = await fetch(`https://api.github.com/repos/${UPDATE_REPO}/releases/latest`, { headers: { 'User-Agent': 'ZKT-Attendance' }, signal: AbortSignal.timeout(5000) });
     if (!r.ok) return res.json({ current: APP_VERSION, available: false, message: 'No published update is available yet.' });
-    const rel = await r.json(), asset = (rel.assets ?? []).find(a => /OKT-Setup-.*\.exe$/i.test(a.name));
+    const rel = await r.json(), asset = (rel.assets ?? []).find(a => /(?:ZKT|OKT)-Setup-.*\.exe$/i.test(a.name));
     const value = { current: APP_VERSION, latest: String(rel.tag_name ?? '').replace(/^v/i, ''), available: newerVersion(rel.tag_name, APP_VERSION), name: rel.name || rel.tag_name, notes: rel.body || '', url: asset?.browser_download_url || rel.html_url, installer: !!asset, published: rel.published_at };
     updateCache = { at: Date.now(), value }; res.json(value);
   } catch (e) { res.json({ current: APP_VERSION, available: false, message: 'Update check unavailable.' }); }
