@@ -1,4 +1,4 @@
-; Optix Attendance Server - Windows installer (built by scripts/build-windows.sh with makensis)
+; OKT Attendance Server - Windows installer (built by scripts/build-windows.sh with makensis)
 Unicode true
 !include "MUI2.nsh"
 !include "nsDialogs.nsh"
@@ -8,8 +8,8 @@ Unicode true
 !endif
 Name "OKT Attendance Server ${VERSION}"
 OutFile "${OUTFILE}"
-InstallDir "$PROGRAMFILES64\Optix"
-InstallDirRegKey HKLM "Software\Optix" "InstallDir"
+InstallDir "$PROGRAMFILES64\OKT"
+InstallDirRegKey HKLM "Software\OKT" "InstallDir"
 RequestExecutionLevel admin
 SetCompressor /SOLID lzma
 BrandingText "OKT"
@@ -36,7 +36,7 @@ Page custom PortsPage PortsLeave
 !insertmacro MUI_LANGUAGE "English"
 
 Function .onInit
-  StrCpy $HttpPort "8080"
+  StrCpy $HttpPort "8888"
   StrCpy $HttpsPort "8443"
   StrCpy $HttpsOn ${BST_UNCHECKED}
 FunctionEnd
@@ -45,7 +45,7 @@ Function PortsPage
   !insertmacro MUI_HEADER_TEXT "Server ports" "Choose how the web service listens. You can change this later under System > Server Setting."
   nsDialogs::Create 1018
   Pop $0
-  ${NSD_CreateLabel} 0 0 100% 24u "HTTP is used by the devices and by browsers on your network. HTTPS (with a certificate Optix creates for you) is needed for the browser fingerprint and for phone GPS."
+  ${NSD_CreateLabel} 0 0 100% 24u "HTTP is used by the devices and by browsers on your network. HTTPS (with a certificate OKT creates for you) is needed for the browser fingerprint and for phone GPS."
   Pop $0
   ${NSD_CreateLabel} 0 34u 90u 12u "HTTP port"
   Pop $0
@@ -87,7 +87,7 @@ Function OpenBrowser
   ExecShell "open" "http://localhost:$HttpPort"
 FunctionEnd
 
-Section "Optix" SecMain
+Section "OKT" SecMain
   SetShellVarContext all
   ; stop an older copy first (upgrade)
   InitPluginsDir
@@ -101,9 +101,9 @@ Section "Optix" SecMain
   SetOutPath "$INSTDIR\app"
   File /r "stage\app\*.*"
   ; settings and data live in ProgramData so an upgrade or uninstall never touches them
-  CreateDirectory "$APPDATA\Optix"
-  IfFileExists "$APPDATA\Optix\server.json" +8 0
-    FileOpen $0 "$APPDATA\Optix\server.json" w
+  CreateDirectory "$APPDATA\OKT"
+  IfFileExists "$APPDATA\OKT\server.json" +8 0
+    FileOpen $0 "$APPDATA\OKT\server.json" w
     ${If} $HttpsOn == ${BST_CHECKED}
       FileWrite $0 '{"http":{"enabled":true,"port":$HttpPort},"https":{"enabled":true,"port":$HttpsPort,"source":"auto","host":""},"redirect":false}'
     ${Else}
@@ -111,31 +111,31 @@ Section "Optix" SecMain
     ${EndIf}
     FileClose $0
   ; firewall: allow node.exe in, whatever ports you choose later in Server Setting
-  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Optix server"'
-  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="Optix server" dir=in action=allow program="$INSTDIR\node.exe" enable=yes profile=any'
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="OKT server"'
+  nsExec::ExecToLog 'netsh advfirewall firewall add rule name="OKT server" dir=in action=allow program="$INSTDIR\node.exe" enable=yes profile=any'
   ; start with Windows, restart if it stops
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\install-task.ps1" -InstallDir "$INSTDIR"'
   ; shortcuts
-  CreateDirectory "$SMPROGRAMS\Optix"
-  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
-  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
-  WriteINIStr "$SMPROGRAMS\Optix\Open OKT.url" "InternetShortcut" "IconIndex" "0"
+  CreateDirectory "$SMPROGRAMS\OKT"
+  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "URL" "http://localhost:$HttpPort"
+  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "IconFile" "$INSTDIR\okt.ico"
+  WriteINIStr "$SMPROGRAMS\OKT\Open OKT.url" "InternetShortcut" "IconIndex" "0"
   CreateShortcut "$DESKTOP\OKT Attendance.lnk" "http://localhost:$HttpPort" "" "$INSTDIR\okt.ico" 0
-  CreateShortcut "$SMPROGRAMS\Optix\Uninstall Optix.lnk" "$INSTDIR\Uninstall.exe"
+  CreateShortcut "$SMPROGRAMS\OKT\Uninstall OKT.lnk" "$INSTDIR\Uninstall.exe"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
-  WriteRegStr HKLM "Software\Optix" "InstallDir" "$INSTDIR"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "DisplayName" "OKT Attendance Server"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "DisplayVersion" "${VERSION}"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "Publisher" "OKT"
-  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix" "NoModify" 1
+  WriteRegStr HKLM "Software\OKT" "InstallDir" "$INSTDIR"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "DisplayName" "OKT Attendance Server"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "DisplayVersion" "${VERSION}"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "Publisher" "OKT"
+  WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT" "NoModify" 1
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext all
   nsExec::ExecToLog 'powershell -NoProfile -ExecutionPolicy Bypass -File "$INSTDIR\remove-task.ps1"'
-  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="Optix server"'
-  RMDir /r "$SMPROGRAMS\Optix"
+  nsExec::ExecToLog 'netsh advfirewall firewall delete rule name="OKT server"'
+  RMDir /r "$SMPROGRAMS\OKT"
   Delete "$DESKTOP\OKT Attendance.lnk"
   RMDir /r "$INSTDIR\app"
   Delete "$INSTDIR\node.exe"
@@ -144,7 +144,7 @@ Section "Uninstall"
   Delete "$INSTDIR\okt.ico"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\Optix"
-  DeleteRegKey HKLM "Software\Optix"
-  MessageBox MB_OK "Optix was removed. Your data (database, backups, settings) is kept in $APPDATA\Optix. Delete that folder if you do not need it."
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\OKT"
+  DeleteRegKey HKLM "Software\OKT"
+  MessageBox MB_OK "OKT was removed. Your data (database, backups, settings) is kept in $APPDATA\OKT. Delete that folder if you do not need it."
 SectionEnd

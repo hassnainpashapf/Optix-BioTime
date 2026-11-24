@@ -159,6 +159,23 @@ devicesRouter.post('/devices/:id/test', async (req, res) => {
   const r = await probe(d.ip, d.port || 4370, 3000);
   res.json({ ok: r.up, mode: 'pull', ms: r.ms ?? null, message: r.up ? `Reached ${d.ip}:${d.port || 4370} in ${r.ms} ms` : `No answer from ${d.ip}:${d.port || 4370}. Check the cable/WiFi, the IP address and that the device allows connections.` });
 });
+// Force a fresh terminal directory scan on demand. Unlike a full sync this
+// reads only enrolled users, so admins can repair placeholder names safely.
+devicesRouter.post('/devices/:id/rescan-users', async (req, res) => {
+  const d = load(req, res); if (!d) return;
+  if (!d.ip || d.brand && d.brand !== 'zkteco') return fail(res, 'Direct user scanning needs a ZKTeco device IP and TCP port.');
+  try {
+    const before = new Map(db.prepare('SELECT code,name FROM device_users WHERE device_id=?').all(d.id).map(u => [String(u.code), u.name]));
+    const r = await syncDeviceUsers(d);
+    const rows = db.prepare('SELECT code,name FROM device_users WHERE device_id=? ORDER BY code').all(d.id);
+    const renamed = rows.filter(u => u.name && !/^user\\s*\\d+$/i.test(u.name) && before.get(String(u.code)) !== u.name).length;
+    const unresolved = db.prepare("SELECT e.code, COUNT(l.id) AS punches FROM employees e JOIN logs l ON l.emp_code=e.code WHERE e.name IS NULL OR e.name='' OR e.name LIKE 'User %' GROUP BY e.code ORDER BY CAST(e.code AS INTEGER)").all();
+    res.json({ ok: true, scanned: r.users, renamed, users: rows, unresolved });
+  } catch (e) {
+    logEvent(d.id, 'sync_error', `User rescan failed: ${e.message}`);
+    res.status(502).json({ error: `User scan failed for ${d.name}: ${e.message}` });
+  }
+});
 devicesRouter.post('/devices/:id/sync', async (req, res) => { // pull devices: read users and all punches now
   const d = load(req, res); if (!d) return;
   if (isPush(d) && (!d.ip || d.brand && d.brand !== 'zkteco')) return fail(res, 'This push device has no supported direct TCP address. It will upload users and punches when it next connects.');

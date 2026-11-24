@@ -6,9 +6,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const data = process.env.OPTIX_DATA || (process.platform === 'win32' ? join(process.env.ProgramData || 'C:\\ProgramData', 'Optix') : '/var/lib/optix');
+const data = process.env.OPTIX_DATA || (process.platform === 'win32' ? join(process.env.ProgramData || 'C:\\ProgramData', 'OKT') : '/var/lib/optix');
 mkdirSync(data, { recursive: true });
-const env = { ...process.env, DB_FILE: process.env.DB_FILE || join(data, 'optix.db'), BACKUP_DIR: process.env.BACKUP_DIR || join(data, 'backups'), LOG_DIR: process.env.LOG_DIR || join(data, 'logs'), UPLOAD_DIR: process.env.UPLOAD_DIR || join(data, 'uploads'), CERT_DIR: process.env.CERT_DIR || join(data, 'certs'), SERVER_CONFIG: process.env.SERVER_CONFIG || join(data, 'server.json') };
+const env = { ...process.env, DB_FILE: process.env.DB_FILE || join(data, 'okt.db'), BACKUP_DIR: process.env.BACKUP_DIR || join(data, 'backups'), LOG_DIR: process.env.LOG_DIR || join(data, 'logs'), UPLOAD_DIR: process.env.UPLOAD_DIR || join(data, 'uploads'), CERT_DIR: process.env.CERT_DIR || join(data, 'certs'), SERVER_CONFIG: process.env.SERVER_CONFIG || join(data, 'server.json') };
 let quick = 0, child, stopping = false;
 const run = () => {
   const t0 = Date.now();

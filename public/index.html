@@ -657,6 +657,8 @@ html[data-skin=classic] .gc .gtools:not(.tbtop){display:none}html[data-skin=clas
 html[data-skin=classic] #top{background:#8abf55}
 html[data-skin=classic] #mods li{font-size:19px!important;font-weight:400!important;color:#505050!important;padding:0 16px!important;letter-spacing:.5px}
 html[data-skin=classic] #mods li:hover{background:rgba(255,255,255,.25)}html[data-skin=classic] #mods li.on:hover{background:#54684c!important;color:#fff!important}
+html[data-skin=classic] #hlogo img{width:135px;height:54px;object-fit:contain;display:block}
+html[data-skin=classic] #hlogo img{filter:brightness(0) invert(1);opacity:.92}
 html[data-skin=classic] #hlogo,html[data-skin=classic] #hlogo b{color:#505050!important}html[data-skin=classic] #hlogo svg{border-color:#505050!important;stroke:#666!important}
 html[data-skin=classic] #mods li.on{background:#54684c!important;color:#fff!important}
 html[data-skin=classic] #mods li.on:after{left:50%!important;right:auto!important;margin-left:-9px!important;bottom:0;width:0!important;height:0!important;border:9px solid transparent!important;border-bottom-color:#fff!important;border-top:0!important;background:none!important}
@@ -721,24 +723,90 @@ html[data-skin=classic] .bmb svg{width:12px;height:12px}
 #login .zlf{background:#fff;color:#222;text-align:center;font-size:12px;padding:32px 0 20px}#login .zlfl{display:flex;align-items:center;justify-content:center;gap:7px;margin-bottom:10px;color:#4a4c53}#login .zlfl svg{width:34px;height:34px;color:#78bf36}#login .zlfl b{font-size:31px;font-weight:800}
 @media(max-width:760px){#login .zlt{height:150px}#login .zlt svg{width:46px;height:46px}#login .zlt b{font-size:38px}#login .zlt span{font-size:32px}#login .zlb{padding:36px 18px 60px}.zltools{display:none!important}#login .zltabs{font-size:17px}.zlbuttons{grid-template-columns:1fr!important;gap:12px!important}}
 html[data-theme=dark] #login{background:#fff}html[data-theme=dark] #login .zlt{color:#444}
+/* Keep the login form usable at normal laptop size and short browser windows. */
+#login .zl{min-height:100svh}
+#login .zlt{height:clamp(110px,19vh,190px)}
+#login .zlt svg{width:clamp(44px,5vw,60px);height:clamp(44px,5vw,60px)}
+#login .zlt b{font-size:clamp(34px,4vw,48px)}
+#login .zlt span{font-size:clamp(32px,3.8vw,46px)}
+#login .zlb{min-height:0;flex:1;padding:clamp(24px,5vh,46px) 20px clamp(28px,5vh,48px)}
+#login .zlbox{max-width:500px}
+#login .zltabs{margin-bottom:22px;font-size:18px}
+#login .zlbox .zlin>input{height:50px;margin-bottom:18px;font-size:16px}
+#login .zleye{top:3px}
+#login .zlagree{margin:2px 0 20px}
+#login .zlbox .zlbuttons{grid-template-columns:1fr;gap:0}
+#login .zlbox .zlbuttons button{height:50px}
+#login .zlf{padding:18px 12px 15px}
+#login .zlfl{margin-bottom:4px}
+#login .zlfl svg{width:25px;height:25px}
+#login .zlfl b{font-size:24px}
+@media(max-width:600px){#login .zlt{height:105px}#login .zlt svg{width:40px;height:40px}#login .zlt b{font-size:32px}#login .zlt span{font-size:30px}#login .zlb{padding:26px 16px 30px}#login .zlbox{max-width:100%}#login .zltabs{font-size:16px;gap:8px;flex-wrap:wrap}#login .zlagree{font-size:13px}}
+
+/* Match the ZKBio Time login proportions while keeping narrow screens usable. */
+#login .zlt{height:21.3vh;min-height:120px;max-height:210px}
+#login .zlt img{display:block;width:min(500px,72vw);height:auto;max-height:90%;object-fit:contain}
+#login .zlb{flex:0 0 auto;min-height:56.4vh;background:#8abf54;padding:48px 16px 42px}
+#login .zlbox{max-width:484px}
+#login .zltabs{font-size:16px;font-weight:400;margin-bottom:32px;gap:12px}
+#login .zltabs a.on{color:#fff}
+#login .zlbox .zlin>input{height:45px;margin-bottom:31px;padding:0 9px;font-size:13px}
+#login .zleye{top:0;right:2px}
+#login .zlagree{font-size:12px;color:#fff;gap:3px;margin:0 0 13px;line-height:1.25}
+#login .zlagree{display:flex!important;flex-direction:row!important;align-items:center!important}
+#login .zltabs a.on{color:#fff!important}
+#login .zltabs a:not(.on){color:#43513f!important}
+#login .zlagree input{width:17px!important;height:17px!important}
+#login .zlbox .zlbuttons button{height:48px;font-size:16px;font-style:italic}
+#login .zlbuttons svg{display:none}
+#login .zlf{flex:1;padding:36px 12px 18px;font-size:12px}
+#login .zlfl{margin-bottom:4px}
+#login .zlfl img{width:169px;height:68px;object-fit:contain}
+@media(max-width:600px){#login .zlt{height:110px}#login .zlt img{width:min(340px,80vw)}#login .zlb{min-height:0;flex:1;padding:28px 16px 42px}#login .zltabs{font-size:15px;margin-bottom:22px}#login .zlbox .zlin>input{margin-bottom:20px}#login .zlf{flex:0 0 auto;padding:16px 12px 10px}#login .zlfl img{width:120px;height:auto}}
 
 .efid{grid-template-columns:1fr!important}
 .calc-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:12px;align-items:stretch;min-width:0}.calc-tree{border:1px solid #e1e3e5;background:#fff;min-width:0;min-height:320px}.calc-tree-head{min-height:42px;display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 8px;background:#f3f3f3;border-bottom:1px solid #e3e3e3}.calc-tree-head>b{font-size:13px;font-weight:500}.calc-tree-tools{display:flex;align-items:center;gap:2px}.calc-tool,.calc-search{width:28px;height:28px;padding:4px;border:0;background:transparent;color:#4a4a4a;display:inline-grid;place-items:center;cursor:pointer}.calc-tool svg,.calc-search svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.calc-tool:hover,.calc-search:hover,.calc-tool.on{color:#70b83d}.calc-tool:focus-visible,.calc-search:focus-visible,.calc-expand:focus-visible,.calc-run:focus-visible{outline:2px solid #2b7bd6;outline-offset:1px}.calc-tree-search{padding:6px;border-bottom:1px solid #eee}.calc-tree-search input{width:100%;height:28px}.calc-tree-list{max-height:calc(100vh - 310px);min-height:260px;overflow:auto;padding:8px 10px}.calc-tree-list ul{list-style:none;margin:0;padding-left:16px}.calc-tree-list>ul{padding:0}.calc-node{margin:0}.calc-node-row{display:flex;align-items:center;gap:3px;min-height:28px}.calc-node-row label{display:flex;flex-direction:row!important;align-items:center;gap:5px;min-width:0;cursor:pointer;font-size:13px!important}.calc-node-row label span{overflow-wrap:anywhere}.calc-node-row input[type=checkbox]{width:16px!important;height:16px!important;margin:0!important;padding:0}.calc-expand,.calc-expand-space{width:18px;height:22px;flex:0 0 18px}.calc-expand{border:0;background:none;color:#555;padding:0;cursor:pointer;font-size:15px}.calc-main{min-width:0}.calc-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 8px;background:#fff;border:1px solid #e4e4e4;margin-bottom:8px}.calc-filter>label{display:flex;flex-direction:row!important;align-items:center;gap:7px;min-width:0;font-size:12px!important;color:#444;font-weight:400!important}.calc-filter>label>span{display:inline-block;width:105px;flex:0 0 105px;line-height:1.2}.calc-filter>label input{height:30px;max-width:100%;width:100%;padding:0 7px}.calc-filter>label:first-child{width:215px}.calc-filter>label:nth-child(2){width:190px}.calc-filter .calc-date{flex-direction:row!important;align-items:center;gap:8px;min-width:0;width:auto}.calc-filter .calc-date span{width:auto;flex:0 0 auto;white-space:nowrap;font-size:13px}.calc-filter .calc-date input{width:142px}.calc-search{width:34px;height:34px;flex:0 0 34px}.calc-run{width:36px;height:36px;flex:0 0 36px;display:inline-grid;place-items:center;border:0;background:transparent;color:#4a4a4a;padding:4px;cursor:pointer}.calc-run:hover{color:#70b83d}.calc-run:disabled{opacity:.55;cursor:wait}.calc-run svg{width:27px;height:27px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}.calc-grid{min-width:0;max-width:100%;overflow:auto}.calc-grid>.gc{min-width:860px}.calc-status{min-height:20px;padding:5px 7px;font-size:12px;color:#5b6065;overflow-wrap:anywhere}
 @media(max-width:1050px){.calc-layout{grid-template-columns:220px minmax(0,1fr);gap:8px}.calc-filter{gap:6px}.calc-filter .calc-date{flex-wrap:wrap}.calc-filter .calc-date input{width:132px}}
 @media(max-width:760px){.calc-layout{grid-template-columns:minmax(0,1fr)}.calc-tree{min-height:0}.calc-tree-list{max-height:200px;min-height:80px}.calc-filter{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 36px;align-items:end}.calc-filter>label,.calc-filter>label:first-child,.calc-filter>label:nth-child(2){display:grid!important;grid-template-columns:1fr;width:auto;min-width:0;gap:3px}.calc-filter>label>span{width:auto;flex:auto}.calc-filter .calc-date{display:grid!important;grid-template-columns:1fr;gap:3px}.calc-filter .calc-date input{width:100%}.calc-search{align-self:end}.calc-run{justify-self:end;grid-column:3;grid-row:2}.calc-grid>.gc{min-width:860px}}
 @media(max-width:420px){.calc-filter{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.calc-search{grid-column:2;justify-self:end}.calc-filter .calc-date{min-width:0}.calc-run{grid-column:2;grid-row:3}.calc-tree-tools{gap:0}.calc-tree-head{padding:4px}}
+
+/* Calculation page follows the reference portal layout. */
+html[data-skin=classic] #app:has(.calc-layout) #bmbar{display:none}
+html[data-skin=classic] #app:has(.calc-layout) main{padding:5px 10px 10px}
+html[data-skin=classic] .calc-layout{grid-template-columns:200px minmax(0,1fr);gap:8px}
+html[data-skin=classic] .calc-tree{border:0;border-right:1px solid #eee;min-height:calc(100vh - 110px)}
+html[data-skin=classic] .calc-tree-head{background:#f3f3f3;border:0;min-height:42px}
+html[data-skin=classic] .calc-tree-head>b{font-weight:400}
+html[data-skin=classic] .calc-filter{border:0;border-bottom:1px solid #e3e3e3;margin:0;padding:4px 8px 9px;min-height:47px;gap:8px}
+html[data-skin=classic] .calc-filter>label input{height:27px;border-radius:0}
+html[data-skin=classic] .calc-filter .calc-date input{width:110px}
+html[data-skin=classic] .calc-grid>.gc{border:1px solid #e3e3e3}
+html[data-skin=classic] .calc-run{color:#34383b;background:transparent!important;box-shadow:none!important;border:0!important}
+html[data-skin=classic] .calc-tool{color:#3d4246;background:transparent!important;box-shadow:none!important}
+html[data-skin=classic] #app:has(.calc-layout) .ztool{display:none}
+@media(max-width:760px){html[data-skin=classic] .calc-layout{grid-template-columns:minmax(0,1fr)}html[data-skin=classic] .calc-tree{min-height:0;border:1px solid #eee}html[data-skin=classic] .calc-filter{display:grid;grid-template-columns:1fr 1fr 36px}html[data-skin=classic] .calc-filter .calc-date input{width:100%}}
+
+/* Shared reference tab and calculation button alignment. */
+html[data-skin=classic] #app:not(.home) #tabs>.tab:first-child{display:none}
+html[data-skin=classic] .calc-search{background:transparent!important;color:#42474a!important;box-shadow:none!important;border:0!important}
+html[data-skin=classic] .calc-search:hover,html[data-skin=classic] .calc-run:hover{color:#70b83d!important}
+
+/* Reference calculation table has no generic grid toolbar. */
+html[data-skin=classic] .calc-grid .gtools{display:none}
+html[data-skin=classic] .calc-tree-list{padding:6px 8px}
+html[data-skin=classic] .calc-node-row label{font-weight:400!important}
 </style><script>try{var sk='classic';localStorage.skin=sk;document.documentElement.dataset.skin=sk;var t='light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.skin='classic';document.documentElement.dataset.theme='light'}</script></head><body>
-<div id="login"><div class="zl"><div class="zlt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2 4 5v6c0 5.2 3.4 9.2 8 11 4.6-1.8 8-5.8 8-11V5z"/><circle cx="12" cy="9" r="2"/><path d="M12 11v6"/></svg><b>OK</b><span>Time</span></div>
- <div class="zlb"><div class="zlbox"><div class="zltabs"><a class="on">Administrator Login</a><i>|</i><a href="/portal">Employee Self-Service</a></div>
-  <div class="zlin"><input id="u" placeholder="Username" autocomplete="username"></div><div class="zlin"><input id="p" type="password" placeholder="Password" autocomplete="current-password"><button class="zleye" type="button" title="Show password" aria-label="Show password" onclick="toggleLoginPassword(this)"><svg viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+<div id="login"><div class="zl"><div class="zlt"><img src="/logo_BioTime.png" alt="ZKBio Time"></div>
+ <div class="zlb"><div class="zlbox"><div class="zltabs"><a class="on">Admin Login</a><i>|</i><a href="/portal">Self-Service</a></div>
+  <div class="zlin"><input id="u" placeholder="Username" autocomplete="username"></div><div class="zlin"><input id="p" type="password" placeholder="Password" autocomplete="current-password"></div>
   <label class="zlagree"><input id="lgagree" type="checkbox"><span>I have read and agree to the Privacy Policy and Data Processing Agreement.</span></label>
   <div class="zlbuttons"><button onclick="login()"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="3"/><path d="m10 13 9-9 2 2-2 2 2 2-2 2-2-2-5 5"/></svg>Login</button></div><p id="le" class="err" style="display:none"></p></div></div>
- <div class="zlf"><div class="zlfl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>OKT</b></div>Copyright &copy;2026 OKT. All rights reserved.</div></div></div>
+ <div class="zlf"><div class="zlfl"><img src="/logo_zk.png" alt="ZKTeco"></div>Copyright &copy;2026 OKT. All rights reserved.</div></div></div>
 <div id="tip"></div>
 <div id="app"><aside id="side"><div id="logo" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>OKT</span></div>
  <div id="sideico"><svg viewBox="0 0 24 24" fill="currentColor" onclick="bmMenu(event)" title="Bookmarks"><path d="M3 12V4h8l9 9-8 8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" onclick="sideSearch()" title="Search menu"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" onclick="sideFold()" title="Collapse all groups"><path d="M3 5h18M11 10h10M11 15h10M3 20h18M7 9l-4 3 4 3z" fill="currentColor"/></svg></div>
  <div id="sidetools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="msearch" placeholder="Search menu" oninput="menuSearch()"></div><div id="menu"></div><div id="sidefoot"><div id="sideuser" onclick="go('My alerts')" title="My alerts"><div class="av" id="suav">A</div><div class="su"><b id="sun">admin</b><span id="sur">Administrator</span></div></div><button class="g sm" id="railbtn" onclick="toggleRail()" title="Collapse or expand the menu">&#8644;</button></div></aside>
- <section id="work"><header id="top"><div id="hlogo" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>OKT</b></div><div id="burger" onclick="document.getElementById('app').classList.toggle('sideopen')">&#9776;</div><ul id="mods"></ul><div id="crumb"></div><div style="flex:1"></div>
+ <section id="work"><header id="top"><div id="hlogo" onclick="goHome()"><img src="/logo_zk.png" alt="ZKTeco"></div><div id="burger" onclick="document.getElementById('app').classList.toggle('sideopen')">&#9776;</div><ul id="mods"></ul><div id="crumb"></div><div style="flex:1"></div>
   <button id="cmdk" class="g" onclick="palette()" title="Search everything (Ctrl+K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search</span><kbd>Ctrl K</kbd></button>
   <div id="tr"><div class="tb" id="editbtn" onclick="go('Announcements')" title="Announcements"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4M12 20h8"/></svg></div><div class="tb" id="themebtn" onclick="toggleTheme()" title="Light / dark"></div><div class="tb" onclick="go('Notifications')" title="Notifications"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg><span class="bell"></span></div>
   
@@ -851,7 +919,7 @@ const pages={
    headcount:x=>hbars((x||[]).map(r=>({label:r.dept,value:r.n,tip:r.dept+': '+r.n})),Math.max(1,...(x||[]).map(r=>r.n)))};
   const edit=window.dashEdit?`<div class="card" style="margin-top:10px"><b style="font-size:15px">Choose what your dashboard shows</b><p class="mut">Tick the widgets you want and use the arrows to put them in order. This is saved for you only.</p>`+
     [...ids,...pr.available.map(x=>x.id).filter(x=>!ids.includes(x))].map(id=>`<div class="bar" style="margin:4px 0"><label style="flex-direction:row;align-items:center;gap:6px;color:var(--ink)"><input type="checkbox" ${ids.includes(id)?'checked':''} onchange="dashToggle('${id}')"> ${esc(title(id))}</label>${ids.includes(id)?`<button class="g sm" onclick="dashMove('${id}',-1)">↑</button><button class="g sm" onclick="dashMove('${id}',1)">↓</button>`:''}</div>`).join('')+`<div class="bar"><button onclick="dashSave()">Save</button><button class="g" onclick="window.dashEdit=false;window.dashSel=null;go('Dashboard')">Cancel</button></div></div>`:'';
-  const versionBox=`<div class="mut sm" style="margin:-6px 0 10px">OKT version ${esc(upd?.current||'unknown')}</div>`;
+  const versionBox=''; if(upd?.current) document.getElementById('hlogo')?.setAttribute('title', `OKT version ${upd.current}`);
   const updateBox=upd?.available?`<div class="card" style="border:1px solid var(--brand);background:color-mix(in srgb,var(--brand) 8%,var(--card));margin-bottom:12px"><div class="row" style="display:flex;justify-content:space-between;align-items:center"><div><b>New OKT update available: ${esc(upd.latest)}</b><div class="mut sm">Current version ${esc(upd.current)}${upd.installer?' · Download the Windows installer, then run it as Administrator. Your data and devices remain saved.':' · Open GitHub release'}</div></div><a class="button" href="${esc(upd.url)}" target="_blank" rel="noopener" download style="background:var(--brand);color:#fff;padding:7px 12px;border-radius:4px;text-decoration:none">Download update installer</a></div></div>`:'';
   return versionBox+updateBox+edit+bioDash(d,st,wd,rg,ids,X)+
   (ids.length&&!window.dashEdit&&document.documentElement.dataset.skin!=='classic'?`<h3>My widgets</h3><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr));margin-top:6px">${ids.map(id=>`<div class="card"><div class="mut" style="margin-bottom:6px">${esc(title(id))}</div>${W[id]?W[id](wd[id]):''}</div>`).join('')}</div>`:'')},
@@ -1579,7 +1647,7 @@ function devPanel(x,groups,cm,es,st,ex){const act=(label,fn,cls='g')=>`<button c
   <h3>Actions</h3>${x.push&&x.approved?`<div class="bar">${act('Send all employees to this device',`devDo(${x.id},'push-users')`)}${act('Fetch users from the device',`devDo(${x.id},'fetch-users')`)}${act('Set the device clock',`devDo(${x.id},'time-sync')`)}${act('Restart device',`if(confirm('Restart this device now?'))devDo(${x.id},'reboot')`,'d')}</div>
     <div class="bar"><input id="rl_f" type="date" value="${today()}"><input id="rl_t" type="date" value="${today()}">${act('Ask the device to send these days again',`devLogs(${x.id})`)}</div>
     ${st.store_templates?`<div class="bar">${act('Copy stored fingerprints and faces to this device',`devDo(${x.id},'sync-bio',{})`)}</div>`:'<p class="mut sm">Copying fingerprints and faces between devices needs "Keep fingerprint/face templates" switched on in Settings.</p>'}`
-    :x.push?'<p class="mut">Approve the device first.</p>':`<div class="bar">${act('Read users and all punches now',`devSync(${x.id})`)}</div><p class="mut sm">Pull devices cannot be restarted or have their clock set from here; use push mode for that.</p>`}
+    :x.push?'<p class="mut">Approve the device first.</p>':`<div class="bar">${act('Rescan user names',`devRescanUsers(${x.id})`)}${act('Read users and all punches now',`devSync(${x.id})`)}</div><p class="mut sm">Pull devices cannot be restarted or have their clock set from here; use push mode for that.</p>`}
   <p class="mut sm">Commands follow the ZKTeco push protocol and have not been tested against your device model yet. Try one device first and check the queue below: a command the device does not understand shows as failed.</p>`;
   else if(tab==='users')body=devUsers(x,ex);
   else if(tab==='punches')body=devPunches(x,ex);
@@ -1593,7 +1661,7 @@ function devUsers(x,u){const can=x.approved&&(x.push||x.ip);const n=u.users.leng
   return `<h3>Users on this device <span class="mut sm">(${n})</span></h3><p class="mut">People this device has reported, has enrolled fingerprints/faces for, or has punched on. ${can?'Choose people to send to the device or remove from it (the employee record stays).':'Sending and removing works for approved devices only.'}</p>
   <div class="bar">${can?`<button onclick="devUsrSend(${x.id},true)">Send all employees to this device</button><button class="g" onclick="devUsrSend(${x.id})">Send selected</button><button class="d" onclick="devUsrRemove(${x.id})">Remove selected from device</button>`:''}<button class="g" onclick="document.querySelectorAll('.duck').forEach(c=>c.checked=true)">Select all</button><button class="g" onclick="document.querySelectorAll('.duck').forEach(c=>c.checked=false)">Clear</button><button class="g" onclick="devSync2(${x.id})">${x.push?'Ask device for its users':'Read users now'}</button></div><p id="devmsg" class="mut"></p>`+
   tbl([['','',r=>`<input type="checkbox" class="duck" value="${esc(r.code)}">`],['Code','code'],['Name','name'],['In system','',r=>r.in_system?(r.active===0?'<span class="tag">Inactive</span>':'<span class="tag t-Present">Yes</span>'):'<span class="tag t-Late">Not in system</span>'],['Card','card'],['Fingerprints','fingerprints'],['Faces','faces'],['Punches here','punches'],['Last punch here','',r=>esc(r.last_punch||'-')]],u.users)}
-async function devSync2(id){return devSync(id)}
+async function devSync2(id){return devRescanUsers(id)}
 function devChecked(cls){return [...document.querySelectorAll('.'+cls+':checked')].map(c=>c.value)}
 async function devUsrSend(id,all){const codes=devChecked('duck');if(!all&&!codes.length)return alert('Select at least one person');if(all&&!confirm('Send every active employee to this device?'))return;await devDo(id,'users/send',all?{all:true}:{codes})}
 async function devUsrRemove(id){const codes=devChecked('duck');if(!codes.length)return alert('Select at least one person');if(!confirm(`Remove ${codes.length} person(s) from the device? Their employee records stay in the system.`))return;{const m=document.getElementById('devmsg');if(m)m.innerHTML='<span class="mut">Working on the device...</span>'}await devDo(id,'users/remove',{codes})}
@@ -1943,6 +2011,7 @@ function devOpenMaintain(){const ids=zsel('dev');if(ids.length!==1)return alert(
 async function devDo(id,what,body){const m=document.getElementById('devmsg');try{const r=await api(`devices/${id}/${what}`,'POST',body);m.innerHTML=`<span style="color:var(--ok)">${r.sent!==undefined?r.sent+' person(s) written to the device.':r.removed!==undefined?r.removed+' person(s) deleted from the device.':(r.queued!==undefined?r.queued+' command(s) queued':'Command queued')+'. The device picks it up at its next check-in (every few seconds).'}</span>`;setTimeout(()=>go('Devices'),1800)}catch(e){m.innerHTML=`<span class="err">${esc(e.message)}</span>`}}
 const devLogs=id=>devDo(id,'request-logs',{from:val('rl_f'),to:val('rl_t')});
 async function devSync(id){const m=document.getElementById('devmsg');m.textContent='Reading the device...';try{const r=await api(`devices/${id}/sync`,'POST');m.innerHTML=`<span style="color:var(--ok)">${r.added} new punches, ${r.users} users.</span>`;setTimeout(()=>go('Devices'),1500)}catch(e){m.innerHTML=`<span class="err">${esc(e.message)}</span>`}}
+async function devRescanUsers(id){const m=document.getElementById('devmsg');if(m)m.textContent='Scanning user names from the device...';try{const r=await api(`devices/${id}/rescan-users`,'POST',{});if(m)m.innerHTML=`<span style="color:var(--ok)">${r.scanned} users scanned, ${r.renamed} names updated.</span>${r.unresolved?.length?`<p class="mut sm">No real name found for ${r.unresolved.length} IDs: ${r.unresolved.map(u=>esc(u.code)).join(', ')}. These IDs need a source containing their names.</p>`:''}`}catch(e){if(m)m.innerHTML=`<span class="err">${esc(e.message)}</span>`;else alert(e.message)}}
 async function devSyncSelected(){const m=document.getElementById('devsyncmsg'),all=window.DEVS||[],picked=zsel('dev'),targets=picked.length?all.filter(d=>picked.includes(Number(d.id))):all.filter(d=>d.approved);if(!m)return;if(!targets.length){m.textContent=picked.length?'Selected devices are not available.':'No approved devices to sync.';return}let punches=0,added=0,users=0,done=0;const errors=[];m.textContent=`Syncing ${targets.length} device(s)...`;for(let i=0;i<targets.length;i++){const d=targets[i];if(!d.approved){errors.push(`${d.name}: not approved`);continue}m.textContent=`Syncing ${d.name} (${i+1}/${targets.length})...`;try{const r=await api(`devices/${d.id}/sync`,'POST',{});punches+=Number(r.read)||0;added+=Number(r.added)||0;users+=Number(r.users)||0;done++}catch(e){errors.push(`${d.name}: ${e.message}`)}}m.innerHTML=`<span style="color:${errors.length?'var(--warn)':'var(--ok)'}">${done} device(s) processed: ${users} users, ${punches} punches read, ${added} new punches.${errors.length?`<br>${errors.map(esc).join('<br>')}`:''}</span>`;if(done)setTimeout(()=>go('Devices'),2500)}
 async function devCmd(id,what){try{await api(`devices/commands/${id}/${what}`,'POST');go('Devices')}catch(e){alert(e.message)}}
 async function devClear(id){try{await api(`devices/${id}/commands/clear`,'POST');go('Devices')}catch(e){alert(e.message)}}

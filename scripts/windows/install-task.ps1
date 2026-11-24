@@ -1,7 +1,7 @@
 # Registers the Optix server as a scheduled task that starts with Windows (as SYSTEM), restarts itself and never times out.
 param([Parameter(Mandatory=$true)][string]$InstallDir)
 $ErrorActionPreference = 'Stop'
-$name = 'Optix Attendance Server'
+$name = 'OKT Attendance Server'
 $node = Join-Path $InstallDir 'node.exe'
 $launcher = Join-Path $InstallDir 'app\launcher.js'
 $a = New-ScheduledTaskAction -Execute $node -Argument ('"' + $launcher + '"') -WorkingDirectory (Join-Path $InstallDir 'app')
