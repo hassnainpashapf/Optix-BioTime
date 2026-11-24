@@ -115,6 +115,7 @@ devicesRouter.get('/devices', (_q, res) => {
   res.json(db.prepare(`SELECT d.*, g.name AS group_name,
       (SELECT COUNT(*) FROM device_users du WHERE du.device_id=d.id) AS user_qty,
       CASE WHEN d.sn IS NULL AND d.dev_fp IS NOT NULL THEN d.dev_fp ELSE (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='fp') END AS fp_qty, CASE WHEN d.sn IS NULL AND d.dev_face IS NOT NULL THEN d.dev_face ELSE (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='face') END AS face_qty,
+      (SELECT COUNT(*) FROM biodata b WHERE b.device_id=d.id AND b.kind='palm') AS palm_qty,
       (SELECT COUNT(*) FROM logs l WHERE l.device_id=d.id) AS punches,
       (SELECT COUNT(*) FROM logs l WHERE l.device_id=d.id AND l.ts>=date('now','localtime')) AS punches_today,
       (SELECT MAX(ts) FROM logs l WHERE l.device_id=d.id) AS last_punch,
