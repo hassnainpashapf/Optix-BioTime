@@ -1,0 +1,78 @@
+// Fill a running server with demo data:  node seed-demo.js http://localhost:8099 admin demo123
+import { runSim, SimDevice } from './sim-device.js';
+const [base = 'http://localhost:8080', user = 'admin', pass = 'admin123'] = process.argv.slice(2);
+const PNG = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+const token = (await (await fetch(base + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user, password: pass }) })).json()).token;
+const api = async (p, m = 'GET', b) => { const r = await fetch(base + '/api/' + p, { method: m, headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token }, body: b && JSON.stringify(b) }); const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(p + ': ' + j.error); return j; };
+await runSim(base, 'DEMO001', 12);
+await api('devices/1', 'PUT', { approved: 1, name: 'Main Gate' }); await runSim(base, 'DEMO001', 12);
+const co = (await api('companies', 'POST', { name: 'Asapp Studio' })).id;
+const hq = (await api('branches', 'POST', { name: 'Lahore HQ', company_id: co, address: 'Ali Town' })).id;
+const kh = (await api('branches', 'POST', { name: 'Karachi', company_id: co })).id;
+const eng = (await api('departments', 'POST', { name: 'Engineering' })).id, ops = (await api('departments', 'POST', { name: 'Operations' })).id;
+const dev = (await api('designations', 'POST', { name: 'Developer' })).id, mgr = (await api('designations', 'POST', { name: 'Manager' })).id;
+const staff = (await api('emp_groups', 'POST', { name: 'Staff' })).id;
+const shift = (await api('shifts', 'POST', { name: 'Office', start: '09:00', end: '18:00', grace_min: 10, workdays: '1,2,3,4,5,6' })).id;
+const cf = (await api('custom_fields', 'POST', { label: 'Blood group', type: 'select', options: 'A+,B+,O+,AB+' })).id;
+const emps = await api('employees');
+const plan = [[eng, hq, dev], [ops, hq, mgr], [eng, kh, dev], [ops, kh, dev], [eng, hq, mgr]];
+for (const [i, e] of emps.entries()) await api('employees/' + e.id, 'PUT', { department_id: plan[i][0], branch_id: plan[i][1], designation_id: plan[i][2], group_id: staff, company_id: co, shift_id: shift, salary: 45000, join_date: '2026-01-05', email: e.name.split(' ')[0].toLowerCase() + '@asapp.test', phone: '03001' + (100000 + i), gender: i % 2 ? 'female' : 'male', custom: { [cf]: 'O+' } });
+await api(`employees/${emps[0].id}/photo`, 'POST', { data: PNG });
+await api(`employees/${emps[0].id}/documents`, 'POST', { name: 'Offer letter', filename: 'offer.txt', data: Buffer.from('Offer letter').toString('base64') });
+await api(`employees/${emps[2].id}/transfer`, 'POST', { branch_id: hq, date: '2026-06-01', note: 'Moved to head office' });
+const d = (n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10);
+await api('leaves', 'POST', { employee_id: emps[0].id, type: 'Casual', from_date: d(1), to_date: d(2), auto_approve: true });
+await api('leaves', 'POST', { employee_id: emps[1].id, type: 'Sick', from_date: d(3), to_date: d(3), note: 'Fever' });
+await api('leaves', 'POST', { employee_id: emps[3].id, type: 'Annual', from_date: d(6), to_date: d(10), note: 'Family trip' });
+const op = (await api('ot_policies', 'POST', { name: 'Approval needed', post: 1, pre: 0, weekend: 1, holiday: 1, min_minutes: 30, round_minutes: 15, mult_work: 1.5, mult_weekend: 2, mult_holiday: 2, daily_max: 0, monthly_max: 0, approval: 1 })).id;
+await api('employees/' + emps[3].id, 'PUT', { ot_policy_id: op });
+const rq = await api('overtime/requests?from=' + d(-14) + '&to=' + d(0));
+if (rq[0]) await api('overtime/' + rq[0].id + '/approve', 'POST', { minutes: 90 });
+if (rq[1]) await api('overtime/' + rq[1].id + '/reject', 'POST', { note: 'No prior approval' });
+await api('overtime/manual', 'POST', { employee_id: emps[0].id, date: d(-3), minutes: 60, note: 'Month-end closing' });
+const ex = await api('report/exceptions?from=' + d(-14) + '&to=' + d(0)); const ab = ex.rows.find(r => r.status === 'Absent');
+if (ab) await api('attendance/requests', 'POST', { employee_id: ab.employee_id, date: ab.date, kind: 'on_duty', status_text: 'Work From Home', reason: 'Site visit' });
+await api('users', 'POST', { username: 'manager', password: 'manager1', role: 'manager', departments: [eng] });
+await api('reports/saved', 'POST', { name: 'Late list (Engineering)', type: 'late', params: { department_id: eng } });
+const mor = (await api('shifts', 'POST', { name: 'Morning', code: 'M', start: '06:00', end: '14:00', grace_min: 10, workdays: '1,2,3,4,5,6' })).id;
+const eve = (await api('shifts', 'POST', { name: 'Evening', code: 'E', start: '14:00', end: '22:00', grace_min: 10, workdays: '1,2,3,4,5,6' })).id;
+const flexi = (await api('shifts', 'POST', { name: 'Flexible 8h', code: 'F', type: 'flexible', start: '07:00', end: '22:00', required_min: 480, grace_min: 0, workdays: '1,2,3,4,5' })).id;
+const spl = (await api('shifts', 'POST', { name: 'Split', code: 'S', type: 'split', start: '09:00', end: '13:00', seg2_start: '17:00', seg2_end: '21:00', grace_min: 10, workdays: '1,2,3,4,5', alt_off: '' })).id;
+const rot = (await api('rotations', 'POST', { name: '2 morning, 1 off, 2 evening', steps: [{ shift_id: mor, days: 2 }, { shift_id: null, days: 1 }, { shift_id: eve, days: 2 }] })).id;
+await api('employees/' + emps[4].id, 'PUT', { rotation_id: rot, rotation_anchor: d(-4) });
+await api('departments/' + ops + '/shift', 'PUT', { shift_id: flexi });
+await api('employees/' + emps[3].id, 'PUT', { shift_id: null });
+await api('schedules', 'POST', { employee_id: emps[1].id, shift_id: spl, from_date: d(1), to_date: d(2) });
+await api('shifts/requests', 'POST', { kind: 'change', employee_id: emps[2].id, shift_id: eve, from_date: d(2), to_date: d(4), reason: 'Evening classes' });
+await api('shifts/requests', 'POST', { kind: 'swap', employee_id: emps[0].id, other_employee_id: emps[1].id, from_date: d(8), to_date: d(8), reason: 'Family function' });
+// ---- employee portal demo: location, announcements, a manager with a team, accounts
+await api('geo_sites', 'POST', { name: 'Head office', lat: 31.5204, lng: 74.3587, radius_m: 150, max_accuracy_m: 100, all_employees: 1 });
+await api('announcements', 'POST', { title: 'Eid holidays', body: 'The office will be closed from Tuesday to Thursday. Please finish pending work by Monday.', audience: 'all', pinned: true });
+await api('announcements', 'POST', { title: 'Engineering offsite', body: 'Friday 4 pm, meeting room 2.', audience: 'department', department_id: eng });
+for (const i of [1, 2]) await api('employees/' + emps[i].id, 'PUT', { manager_id: emps[0].id });
+const made = await api('portal-accounts', 'POST', { all: true });
+for (const a of made.accounts.filter(x => ['101', '102', '103'].includes(x.code))) {
+  const post = async (p, b, t) => (await fetch(base + '/api/portal/' + p, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(t ? { Authorization: 'Bearer ' + t } : {}) }, body: JSON.stringify(b) })).json();
+  const t = (await post('login', { code: a.code, password: a.password })).token; await post('password', { current: a.password, password: 'demo-pass-' + a.code }, t);
+}
+// ---- devices: a group, a second push device, a pull device that is down, some history
+const grp = (await api('device_groups', 'POST', { name: 'HQ devices', branch_id: hq })).id;
+await api('devices/1', 'PUT', { group_id: grp, location: 'Reception' });
+await new SimDevice(base, 'DEMO001', { info: 'Ver 6.60 Sep 18 2019,12,5,900,192.168.1.201' }).poll();
+await api('devices', 'POST', { name: 'Warehouse door', sn: 'WH-0042', location: 'Warehouse' });
+await new SimDevice(base, 'WH-0042', { info: 'Ver 8.0.4 Jan 2 2023,3,1,40,192.168.1.202' }).poll();
+const old = (await api('devices', 'POST', { name: 'Old terminal', ip: '127.0.0.1', port: 1, location: 'Back office' })).id; await api('devices/' + old, 'PUT', { approved: true });
+await api('devices/1/reboot', 'POST');
+await api('devices/check', 'POST');
+// ---- visitors, meetings, integrations
+await api('visitors', 'POST', { name: 'Sara Supplier', company: 'Acme Ltd', phone: '0300-1234567', purpose: 'Contract meeting', host_id: emps[0].id, check_in: true });
+await api('visitors', 'POST', { name: 'Walk-in Wali', purpose: 'Delivery', check_in: true });
+await api('visitors', 'POST', { name: 'Tariq Technician', company: 'Cooling Co', purpose: 'AC service', host_id: emps[1].id, expected_date: d(0), expected_time: '15:00' });
+await api('visitors/blocklist', 'POST', { name: 'Banned Bashir', reason: 'Trespassed before' });
+const room = (await api('rooms', 'POST', { name: 'Board room', capacity: 8, location: 'Floor 2' })).id; await api('rooms', 'POST', { name: 'Huddle room', capacity: 3 });
+await api('meetings', 'POST', { title: 'Weekly sync', start: `${d(1)} 10:00`, end: `${d(1)} 11:00`, room_id: room, organizer_id: emps[0].id, attendees: emps.slice(0, 4).map(e => e.id), agenda: 'Progress, blockers and next week.' });
+await api('meetings', 'POST', { title: 'Client call', start: `${d(2)} 15:00`, end: `${d(2)} 16:00`, place: 'Online', organizer_id: emps[1].id, attendees: [emps[1].id, emps[2].id] });
+await api('api-keys', 'POST', { name: 'Payroll system', scopes: ['employees:read', 'payroll:read'] });
+await api('webhooks', 'POST', { name: 'ERP', url: 'http://127.0.0.1:9/hook', events: ['employee.created', 'leave.requested'] });
+console.log('portal logins: 101 (manager), 102, 103 with password demo-pass-<code>');
+console.log('seeded', emps.length, 'employees');

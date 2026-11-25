@@ -1,0 +1,15 @@
+# Linux (systemd). Edit User and paths, then:
+#   sudo cp attendance.service /etc/systemd/system/ && sudo systemctl enable --now attendance
+[Unit]
+Description=Attendance Manager
+After=network.target
+
+[Service]
+User=attendance
+WorkingDirectory=/opt/attendance
+ExecStart=/usr/bin/node server.js
+Environment=PORT=8080
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
