@@ -539,6 +539,21 @@ html[data-skin=classic] .b95leave svg {
 html[data-skin=classic] .b95list {
   min-height: 330px;
 }
+/* Real-Time Monitoring: show 5 entries, scroll the rest (one row is ~73px) */
+html[data-skin=classic] .b95rtm {
+  max-height: 365px;
+  overflow-y: auto;
+}
+/* Reports page: table body scrolls inside the card, header stays visible (one row is ~44px) */
+html[data-skin=classic] .b95rep .gc .wrap {
+  max-height: 480px;
+  overflow-y: auto;
+}
+html[data-skin=classic] .b95rep .gc thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
 html[data-skin=classic] .b95empty-box {
   display: flex;
   flex-direction: column;
@@ -697,36 +712,6 @@ html[data-skin=classic] .b95ai-box p {
   line-height: 1.45;
 }
 
-/* Floating Green Chat Button */
-html[data-skin=classic] .b95fab {
-  position: fixed;
-  right: 22px;
-  bottom: 22px;
-  width: 54px !important;
-  height: 54px !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 50% !important;
-  background: #73b839 !important;
-  color: #ffffff !important;
-  box-shadow: 0 6px 20px rgba(115, 184, 57, 0.42) !important;
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 40;
-  transition: transform 0.15s ease, background-color 0.15s ease;
-}
-html[data-skin=classic] .b95fab:hover {
-  transform: scale(1.06);
-  background: #65a62f !important;
-}
-html[data-skin=classic] .b95fab svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* Responsive */
 @media (max-width: 1280px) {
   html[data-skin=classic] .b95metrics {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -752,7 +737,7 @@ html[data-skin=classic] .b95fab svg {
   }
 }
 
-/* Header active underline for Notification & Feedback icons */
+/* Header active underline for Notification icon */
 html[data-skin=classic] #tr .tb.b95-tb-on {
   position: relative;
 }
@@ -767,7 +752,7 @@ html[data-skin=classic] #tr .tb.b95-tb-on:after {
   border-radius: 1px;
 }
 
-/* BioTime 9.5 Notification & Feedback Modals */
+/* BioTime 9.5 Notification Modals */
 .b95-modal-bg {
   position: fixed;
   inset: 0;
@@ -895,96 +880,3 @@ html[data-skin=classic] #tr .tb.b95-tb-on:after {
   background: #f5f6f8 !important;
 }
 
-/* Feedback Form Layout */
-.b95-fb-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 28px;
-  align-items: center;
-}
-.b95-fb-row {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  gap: 10px;
-}
-.b95-fb-row.full {
-  grid-column: 1 / -1;
-  align-items: flex-start;
-}
-.b95-fb-row.full > label {
-  padding-top: 6px;
-}
-.b95-fb-row > label {
-  text-align: right;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-  color: #333333 !important;
-  margin: 0 !important;
-  display: block !important;
-}
-.b95-fb-row > label em {
-  font-style: normal;
-  color: #e53935;
-  margin-left: 2px;
-}
-.b95-fb-row input,
-.b95-fb-row select,
-.b95-fb-row textarea {
-  width: 100% !important;
-  border: 1px solid #dcdfe6 !important;
-  border-radius: 3px !important;
-  background: #ffffff !important;
-  color: #333333 !important;
-  font-size: 13px !important;
-  padding: 0 10px !important;
-  height: 32px !important;
-  box-shadow: none !important;
-}
-.b95-fb-row textarea {
-  height: 124px !important;
-  padding: 8px 10px !important;
-  resize: vertical;
-}
-.b95-fb-row input:focus,
-.b95-fb-row select:focus,
-.b95-fb-row textarea:focus {
-  border-color: #7ac143 !important;
-  outline: none !important;
-}
-.b95-fb-up {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.b95-fb-up button {
-  height: 28px !important;
-  padding: 0 14px !important;
-  border: 0 !important;
-  border-radius: 3px !important;
-  background: #7ac143 !important;
-  color: #ffffff !important;
-  font-size: 12.5px !important;
-  box-shadow: none !important;
-  cursor: pointer;
-}
-.b95-fb-up button:hover {
-  background: #6ab035 !important;
-}
-.b95-fb-fname {
-  font-size: 12px;
-  color: #6b7280;
-}
-.b95-fb-msg {
-  margin: 12px 0 0 106px;
-  font-size: 12.5px;
-  min-height: 16px;
-}
-@media (max-width: 680px) {
-  .b95-fb-grid {
-    grid-template-columns: 1fr;
-  }
-  .b95-fb-row {
-    grid-template-columns: 84px minmax(0, 1fr);
-  }
-}
