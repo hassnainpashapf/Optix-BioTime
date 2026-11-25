@@ -20,10 +20,141 @@ details summary{cursor:pointer;list-style:none}.err{color:var(--bad)}hr{border:0
 button{border-radius:14px}.punch{background:linear-gradient(135deg,#8579ff,#5445f2);box-shadow:0 10px 24px rgba(84,69,242,.35);border-radius:22px}nav{border-top:0;box-shadow:0 -6px 24px rgba(23,26,48,.08);border-radius:22px 22px 0 0}nav a.on{color:var(--brand)}nav a.on b{background:var(--info-bg);border-radius:12px;padding:2px 14px;display:inline-block}
 html[dir=rtl] .badge{right:auto;left:18%}html[dir=rtl] nav a{letter-spacing:0}html[dir=rtl] body{line-height:1.8}
 #app:not([hidden])~#langbtn{display:none}#langbtn{position:fixed;top:10px;inset-inline-end:12px;z-index:20;height:34px;padding:0 14px;border-radius:999px;font-size:13px}
-</style></head><body>
-<div id="login" hidden><h1>My Attendance</h1><p class="mut">Sign in with your employee ID and the password HR gave you.</p>
- <label>Employee ID</label><input id="lc" inputmode="numeric" autocomplete="username"><label>Password</label><input id="lp" type="password" autocomplete="current-password">
- <label style="display:flex;gap:8px;align-items:center;font-size:14px"><input id="lr" type="checkbox" style="width:auto;margin:0"> Keep me signed in on this phone</label><br><button style="width:100%" onclick="doLogin()">Sign in</button><p id="le" class="err"></p></div>
+</style><link rel="stylesheet" href="/bio95-login.css"></head><body>
+<div id="login" class="portal-login" hidden><div class="zl"><div class="zlwrap"><div class="zlcard">
+ <div class="zlt">
+  <div class="zlbrand" aria-label="BioTime 9.5">
+   <svg viewBox="0 0 320 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BioTime 9.5">
+    <path d="M84 62 A34 34 0 1 1 82 28" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M36 47 L49 60 L76 28" fill="none" stroke="#363c42" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="72" y="61" fill="#363c42" font-family="Helvetica Neue, Arial, sans-serif" font-size="37" font-weight="800" letter-spacing="-0.6">BioTime</text>
+    <text x="234" y="61" fill="#ffffff" font-family="Helvetica Neue, Arial, sans-serif" font-size="34" font-weight="800" font-style="italic" letter-spacing="-0.5">9.5</text>
+   </svg>
+  </div>
+  <div class="zlillus" aria-hidden="true">
+   <svg viewBox="0 0 360 235" xmlns="http://www.w3.org/2000/svg">
+    <path d="M210 42 C228 16, 260 12, 276 24" fill="none" stroke="#385b22" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.65"/>
+    <polygon points="278,16 298,27 277,31 282,25" fill="#f2a666"/>
+    <polygon points="278,16 282,25 277,31" fill="#d97b38"/>
+    <g stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.88">
+     <line x1="110" y1="62" x2="103" y2="54"/><line x1="118" y1="58" x2="115" y2="49"/><line x1="126" y1="60" x2="128" y2="51"/>
+     <line x1="252" y1="58" x2="258" y2="50"/><line x1="262" y1="64" x2="270" y2="59"/><line x1="258" y1="73" x2="267" y2="73"/>
+    </g>
+    <path d="M52 135 h34 a8 8 0 0 0 0 -16 a11 11 0 0 0 -20 -4 a8 8 0 0 0 -14 6 a7 7 0 0 0 0 14 z" fill="#ffffff" opacity="0.95"/>
+    <path d="M276 112 h30 a7 7 0 0 0 0 -14 a10 10 0 0 0 -18 -3 a7 7 0 0 0 -12 5 a6 6 0 0 0 0 12 z" fill="#ffffff" opacity="0.95"/>
+    <path d="M84 94 h16 a4 4 0 0 0 0 -8 a6 6 0 0 0 -10 -2 a4 4 0 0 0 -6 3 a3.5 3.5 0 0 0 0 7 z" fill="#ffffff" opacity="0.9"/>
+    <path d="M272 78 h14 a3.5 3.5 0 0 0 0 -7 a5 5 0 0 0 -9 -1.5 a3.5 3.5 0 0 0 -5 2.5 a3 3 0 0 0 0 6 z" fill="#ffffff" opacity="0.9"/>
+    <g fill="#8ccdc0" opacity="0.82">
+     <circle cx="116" cy="140" r="24"/>
+     <g transform="translate(116,140)">
+      <rect x="-5" y="-32" width="10" height="10" rx="2"/><rect x="-5" y="22" width="10" height="10" rx="2"/>
+      <rect x="-32" y="-5" width="10" height="10" rx="2"/><rect x="22" y="-5" width="10" height="10" rx="2"/>
+      <rect x="-5" y="-32" width="10" height="10" rx="2" transform="rotate(45)"/><rect x="-5" y="22" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="-32" y="-5" width="10" height="10" rx="2" transform="rotate(45)"/><rect x="22" y="-5" width="10" height="10" rx="2" transform="rotate(45)"/>
+     </g>
+     <circle cx="116" cy="140" r="10" fill="#73b839"/>
+     <circle cx="250" cy="144" r="28"/>
+     <g transform="translate(250,144)">
+      <rect x="-6" y="-37" width="12" height="11" rx="2"/><rect x="-6" y="26" width="12" height="11" rx="2"/>
+      <rect x="-37" y="-6" width="11" height="12" rx="2"/><rect x="26" y="-6" width="11" height="12" rx="2"/>
+      <rect x="-6" y="-37" width="12" height="11" rx="2" transform="rotate(45)"/><rect x="-6" y="26" width="12" height="11" rx="2" transform="rotate(45)"/>
+      <rect x="-37" y="-6" width="11" height="12" rx="2" transform="rotate(45)"/><rect x="26" y="-6" width="11" height="12" rx="2" transform="rotate(45)"/>
+     </g>
+     <circle cx="250" cy="144" r="12" fill="#73b839"/>
+    </g>
+    <path d="M188 86 C188 60, 206 46, 212 52 C217 58, 207 78, 196 90 Z" fill="#9cd7b8"/>
+    <path d="M198 92 C210 68, 226 62, 229 69 C232 76, 216 90, 204 97 Z" fill="#4f995d"/>
+    <circle cx="184" cy="146" r="66" fill="#ffffff" stroke="#313740" stroke-width="6.5"/>
+    <g stroke="#313740" stroke-width="2" stroke-linecap="round">
+     <line x1="184" y1="88" x2="184" y2="94"/><line x1="184" y1="198" x2="184" y2="204"/>
+     <line x1="126" y1="146" x2="132" y2="146"/><line x1="236" y1="146" x2="242" y2="146"/>
+     <line x1="155" y1="96" x2="158" y2="101"/><line x1="213" y1="96" x2="210" y2="101"/>
+     <line x1="134" y1="117" x2="139" y2="120"/><line x1="234" y1="117" x2="229" y2="120"/>
+     <line x1="134" y1="175" x2="139" y2="172"/><line x1="234" y1="175" x2="229" y2="172"/>
+     <line x1="155" y1="196" x2="158" y2="191"/><line x1="213" y1="196" x2="210" y2="191"/>
+    </g>
+    <path d="M184 146 L154 126" stroke="#73b839" stroke-width="6" stroke-linecap="round"/>
+    <path d="M184 146 L216 122" stroke="#73b839" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="184" cy="146" r="5" fill="#313740"/>
+    <g>
+     <circle cx="176" cy="54" r="6.5" fill="#f3c6a5"/>
+     <path d="M170 52 C170 46, 182 45, 183 52 C180 50, 174 50, 170 52 Z" fill="#2d3138"/>
+     <path d="M167 64 C167 60, 184 60, 185 65 L186 80 L166 80 Z" fill="#5e549b"/>
+     <path d="M167 79 L174 102 L179 102 L176 80 Z" fill="#2e72a1"/>
+     <path d="M178 79 L185 104 L190 104 L185 80 Z" fill="#235b82"/>
+     <rect x="171" y="70" width="16" height="10" rx="1.5" fill="#e5e9f0" stroke="#47505c" stroke-width="1.2"/>
+    </g>
+    <g>
+     <circle cx="96" cy="144" r="6" fill="#f3c6a5"/>
+     <path d="M90 144 C90 137, 102 137, 102 145 L103 150 L90 150 Z" fill="#2d2633"/>
+     <path d="M88 153 L104 153 L109 184 L85 184 Z" fill="#53315c"/>
+     <path d="M89 154 L78 134" stroke="#53315c" stroke-width="4.5" stroke-linecap="round"/>
+     <path d="M103 154 L110 138" stroke="#53315c" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="92" y1="184" x2="90" y2="212" stroke="#36424d" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="101" y1="184" x2="104" y2="212" stroke="#36424d" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <g>
+     <path d="M118 186 L118 212 M136 196 L136 212 M118 196 L138 196" stroke="#c8933c" stroke-width="2.5" stroke-linecap="round"/>
+     <circle cx="129" cy="164" r="6" fill="#f3c6a5"/>
+     <path d="M123 163 C124 157, 134 157, 135 163 Z" fill="#2d3138"/>
+     <path d="M121 172 L135 172 L137 195 L121 195 Z" fill="#8b96a3"/>
+     <path d="M124 194 L147 194 L152 211 L146 211 L142 199 L124 199 Z" fill="#1e7588"/>
+     <polygon points="139,181 157,181 153,192 135,192" fill="#3a404a"/>
+    </g>
+    <g>
+     <circle cx="242" cy="154" r="6" fill="#f3c6a5"/>
+     <path d="M236 153 C237 147, 247 147, 248 153 Z" fill="#2d3138"/>
+     <path d="M234 162 L249 162 L251 187 L233 187 Z" fill="#ec8b58"/>
+     <path d="M235 166 L221 161" stroke="#ec8b58" stroke-width="4.5" stroke-linecap="round"/>
+     <polygon points="212,155 224,159 224,165 212,168" fill="#5e549b"/>
+     <line x1="238" y1="187" x2="236" y2="212" stroke="#2f3742" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="246" y1="187" x2="249" y2="212" stroke="#2f3742" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <g>
+     <circle cx="288" cy="144" r="6" fill="#f3c6a5"/>
+     <path d="M282 143 C283 137, 293 137, 294 143 Z" fill="#2d3138"/>
+     <path d="M280 152 L296 152 L295 178 L281 178 Z" fill="#f8fafc"/>
+     <path d="M281 154 L271 136" stroke="#f8fafc" stroke-width="4.5" stroke-linecap="round"/>
+     <path d="M295 154 L305 136" stroke="#f8fafc" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="285" y1="178" x2="282" y2="212" stroke="#363c44" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="292" y1="178" x2="296" y2="212" stroke="#363c44" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <line x1="66" y1="214" x2="306" y2="214" stroke="#2d353c" stroke-width="1.8" stroke-linecap="round"/>
+   </svg>
+  </div>
+  <div class="zlleft-icons">
+   <button type="button" onclick="$('#le').textContent='BioTime 9.5 — Employee Self-Service Portal.'" title="About BioTime" aria-label="About BioTime">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14.5" fill="#ffffff"/><circle cx="16" cy="10.2" r="1.9" fill="#73b839"/><rect x="14.4" y="14" width="3.2" height="9.2" rx="1.4" fill="#73b839"/></svg>
+   </button>
+   <button type="button" onclick="setLang(LANG==='ur'?'en':'ur')" title="Switch Language (English / Urdu)" aria-label="Switch Language">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="16" cy="16" r="13.5"/><ellipse cx="16" cy="16" rx="6.2" ry="13.5"/><line x1="2.8" y1="16" x2="29.2" y2="16"/><path d="M5.2 9.5 C9 11.4, 23 11.4, 26.8 9.5"/><path d="M5.2 22.5 C9 20.6, 23 20.6, 26.8 22.5"/></svg>
+   </button>
+  </div>
+ </div>
+ <div class="zlb"><div class="zlbox">
+  <h1>WELCOME BACK</h1>
+  <p class="zlsub">Time &amp; Attendance Management</p>
+  <div class="zltabs"><a href="/">Administrator</a><i>|</i><a class="on" href="javascript:void(0)">Employee</a></div>
+  <div class="zlin"><input id="lc" inputmode="numeric" placeholder="e.g. 10001" aria-label="Employee ID" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()"></div>
+  <div class="zlin"><input id="lp" type="password" placeholder="Enter your password" aria-label="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()"></div>
+  <div class="zlopts">
+   <label class="zlrem"><input id="lr" type="checkbox"><span>Remember me</span></label>
+   <a class="zlforgot" href="javascript:void(0)" onclick="$('#le').textContent='Please contact HR or your system administrator to reset your password.'">Forgot password?</a>
+  </div>
+  <div class="zlbuttons">
+   <button class="zlsubmit" type="button" onclick="doLogin()">Login</button>
+  </div>
+  <p id="le" class="err"></p>
+  <div class="zlsocial" aria-label="Social links">
+   <a href="javascript:void(0)" title="X" aria-label="X"><svg viewBox="0 0 24 24" fill="#111111"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+   <a href="javascript:void(0)" title="Facebook" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="#2f4d8a"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg></a>
+   <a href="javascript:void(0)" title="YouTube" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="#e52d27"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+   <a href="javascript:void(0)" title="LinkedIn" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="#1b74b8"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+  </div>
+ </div></div>
+</div></div>
+ <div class="zlf"><div class="zlfl"><img src="/logo_zk.png" alt="ZKTeco"></div><div>Copyright &copy;2026 ZKTeco Security LLC. All rights reserved.</div><div class="zlf-links"><a href="javascript:void(0)" onclick="$('#le').textContent='Data Processing Agreement applies to all attendance records stored on this server.'">Data Processing Agreement</a> <a href="javascript:void(0)" onclick="$('#le').textContent='Personal Information Protection and Privacy Policy applies to employee credentials and attendance logs.'">Personal Information Protection and Privacy Policy</a></div></div>
+</div></div>
 <main id="app" hidden></main><nav id="nav" hidden></nav>
 <script>
 

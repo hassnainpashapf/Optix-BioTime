@@ -1,0 +1,477 @@
+/* BioTime 9.5 Login Screen */
+#login[hidden] {
+  display: none !important;
+}
+
+#login.portal-login:not([hidden]) {
+  display: flex !important;
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  overflow-y: auto;
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#login .zlbox .err:empty {
+  display: none !important;
+}
+
+#login {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 100vh;
+  width: 100%;
+  background-color: #eceef0 !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='1600' height='1000' viewBox='0 0 1600 1000'%3E%3Crect width='1600' height='1000' fill='%23eef0f2'/%3E%3Cpolygon points='0,0 420,0 180,340' fill='%23e5e8ec' opacity='0.65'/%3E%3Cpolygon points='420,0 980,0 640,260' fill='%23f5f6f8' opacity='0.8'/%3E%3Cpolygon points='980,0 1600,0 1320,310' fill='%23e3e6ea' opacity='0.6'/%3E%3Cpolygon points='0,0 180,340 0,680' fill='%23f6f7f9' opacity='0.7'/%3E%3Cpolygon points='180,340 640,260 440,660' fill='%23e9ecef' opacity='0.65'/%3E%3Cpolygon points='640,260 1320,310 920,690' fill='%23f3f5f7' opacity='0.7'/%3E%3Cpolygon points='1320,310 1600,0 1600,560' fill='%23dfe3e8' opacity='0.55'/%3E%3Cpolygon points='0,680 440,660 220,1000 0,1000' fill='%23e6e9ed' opacity='0.7'/%3E%3Cpolygon points='440,660 920,690 700,1000 220,1000' fill='%23f5f6f8' opacity='0.75'/%3E%3Cpolygon points='920,690 1600,560 1600,1000 1160,1000' fill='%23e2e5ea' opacity='0.6'/%3E%3Cpolygon points='920,690 1160,1000 700,1000' fill='%23eceff2' opacity='0.8'/%3E%3Cpolygon points='1320,310 1600,560 920,690' fill='%23eaedf1' opacity='0.5'/%3E%3Cpolygon points='180,340 440,660 0,680' fill='%23e4e7eb' opacity='0.55'/%3E%3C/svg%3E") !important;
+  background-size: cover !important;
+  background-position: center !important;
+  font-family: "Helvetica Neue", Helvetica, Arial, "Inter", sans-serif;
+}
+
+html[data-theme=dark] #login {
+  background-color: #eceef0 !important;
+}
+
+#login .zl {
+  display: flex !important;
+  flex-direction: column !important;
+  flex-wrap: nowrap !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+#login .zlwrap {
+  flex: 1 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 40px 20px 20px;
+}
+
+#login .zlcard {
+  width: min(880px, 94vw);
+  min-height: 472px;
+  background: #ffffff;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: row;
+  box-shadow: 0 18px 50px rgba(20, 30, 45, 0.09);
+}
+
+/* Left Green Panel */
+#login .zlt {
+  width: 44% !important;
+  min-width: 340px;
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  background: #73b839 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 36px 24px 22px !important;
+  gap: 10px !important;
+  align-self: stretch !important;
+  position: relative;
+}
+
+#login .zlbrand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+#login .zlbrand svg {
+  width: 248px !important;
+  height: auto !important;
+  max-width: 92%;
+  display: block;
+}
+
+#login .zlillus {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+#login .zlillus svg {
+  width: 100% !important;
+  max-width: 318px;
+  height: auto !important;
+  display: block;
+}
+
+#login .zlleft-icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 4px;
+}
+
+#login .zlleft-icons button {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.96;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+#login .zlleft-icons button:hover {
+  transform: scale(1.07);
+  opacity: 1;
+  filter: none !important;
+}
+
+#login .zlleft-icons svg {
+  width: 30px !important;
+  height: 30px !important;
+  display: block;
+}
+
+/* Right White Form Panel */
+#login .zlb {
+  flex: 1 1 auto !important;
+  width: 56% !important;
+  min-height: 0 !important;
+  background: #ffffff !important;
+  padding: 38px 54px 28px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-self: stretch !important;
+}
+
+#login .zlbox {
+  width: 100% !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  color: #333333 !important;
+}
+
+#login .zlbox h1 {
+  text-align: center;
+  color: #73b839;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  margin: 0 0 6px;
+  line-height: 1.25;
+}
+
+#login .zlsub {
+  text-align: center;
+  color: #33383e;
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0 0 22px;
+}
+
+#login .zltabs {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 24px !important;
+  margin: 0 0 28px !important;
+  font-size: 16px !important;
+  font-weight: 500 !important;
+}
+
+#login .zltabs a {
+  text-decoration: none !important;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+#login .zltabs a.on {
+  color: #73b839 !important;
+  font-weight: 500;
+}
+
+#login .zltabs a:not(.on) {
+  color: #2b2f35 !important;
+}
+
+#login .zltabs a:not(.on):hover {
+  color: #73b839 !important;
+}
+
+#login .zltabs i {
+  font-style: normal;
+  color: #33383e;
+  font-size: 15px;
+  font-weight: 400;
+}
+
+#login .zllabel {
+  display: block !important;
+  color: #33383e !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  margin: 0 0 6px !important;
+}
+
+#login .zlbox .zlin {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+#login .zlbox .zlin > input {
+  width: 100% !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 14px !important;
+  border: 1px solid #d9dde2 !important;
+  border-radius: 2px !important;
+  font-size: 14px !important;
+  background: #ffffff !important;
+  color: #333333 !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease;
+}
+
+#login .zlbox .zlin > input::placeholder {
+  color: #9ea4ac;
+}
+
+#login .zlbox .zlin > input:focus {
+  border-color: #73b839 !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(115, 184, 57, 0.14) !important;
+}
+
+/* Options Row: Remember me + Forgot password */
+#login .zlopts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 2px 0 22px;
+  font-size: 13px;
+}
+
+#login .zlrem {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  color: #a0a6ae !important;
+  cursor: pointer;
+  user-select: none;
+}
+
+#login .zlrem input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  accent-color: #1677ff;
+  cursor: pointer;
+}
+
+#login .zlforgot {
+  color: #a0a6ae !important;
+  text-decoration: none;
+  font-size: 13px;
+  transition: color 0.15s ease;
+}
+
+#login .zlforgot:hover {
+  color: #73b839 !important;
+  text-decoration: underline;
+}
+
+/* Action Buttons Row: Login + Fingerprint */
+#login .zlbox .zlbuttons {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  grid-template-columns: none !important;
+}
+
+#login .zlbox .zlbuttons button.zlsubmit {
+  flex: 1 1 auto !important;
+  width: auto !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 18px !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: #73b839 !important;
+  color: #ffffff !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  font-style: italic !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+#login .zlbox .zlbuttons button.zlsubmit:hover {
+  background: #65a62f !important;
+  filter: none !important;
+}
+
+#login .zlbox .zlbuttons button.zlfp {
+  flex: 0 0 46px !important;
+  width: 46px !important;
+  height: 44px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 2px !important;
+  background: #7d8084 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+#login .zlbox .zlbuttons button.zlfp:hover {
+  background: #676a6e !important;
+  filter: none !important;
+}
+
+#login .zlbox .zlbuttons button.zlfp svg {
+  display: block !important;
+  width: 28px !important;
+  height: 28px !important;
+  margin: 0 !important;
+}
+
+#login .zlbox .err {
+  margin: 12px 0 0 !important;
+  background: #fdecec !important;
+  color: #c53030 !important;
+  border: 1px solid #f8c7c7;
+  padding: 8px 12px !important;
+  border-radius: 3px !important;
+  font-size: 12.5px !important;
+}
+
+/* Social Icons Row */
+#login .zlsocial {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 22px;
+}
+
+#login .zlsocial a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  text-decoration: none;
+  opacity: 0.92;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+#login .zlsocial a:hover {
+  opacity: 1;
+  transform: translateY(-1px);
+}
+
+#login .zlsocial svg {
+  width: 17px;
+  height: 17px;
+  display: block;
+}
+
+/* Footer */
+#login .zlf {
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  background: transparent !important;
+  color: #82878d !important;
+  text-align: center !important;
+  font-size: 11.5px !important;
+  line-height: 1.7 !important;
+  padding: 12px 16px 20px !important;
+}
+
+#login .zlfl {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 0 6px !important;
+}
+
+#login .zlfl img {
+  width: auto !important;
+  height: 21px !important;
+  object-fit: contain !important;
+  display: block;
+}
+
+#login .zlf-links {
+  margin-top: 2px;
+}
+
+#login .zlf-links a {
+  color: #82878d !important;
+  text-decoration: underline;
+  margin: 0 4px;
+  font-size: 11.5px;
+}
+
+#login .zlf-links a:hover {
+  color: #555a60 !important;
+}
+
+/* Responsive */
+@media (max-width: 780px) {
+  #login .zlwrap {
+    padding: 20px 14px 12px;
+  }
+  #login .zlcard {
+    flex-direction: column;
+    min-height: 0;
+    border-radius: 18px;
+  }
+  #login .zlt {
+    width: 100% !important;
+    min-width: 0;
+    padding: 24px 20px 18px !important;
+  }
+  #login .zlillus svg {
+    max-width: 240px;
+  }
+  #login .zlb {
+    width: 100% !important;
+    padding: 28px 24px 24px !important;
+  }
+}

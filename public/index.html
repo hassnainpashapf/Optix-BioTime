@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ZKT</title><link rel="icon" href="/favicon.ico" sizes="any">
+<title>BioTime 9.5</title><link rel="icon" href="/favicon.ico" sizes="any">
 <style>
 :root{--bg:#f4f7fa;--card:#fff;--ink:#333;--mut:#858b94;--brand:#4f8a1e;--brand-d:#3d6e14;--line:#e3e5e8;--head:#f4f5f6;--side:#3a3e4f;--side2:#2e3140;--link:#1b8fcb;--ok:#3d9a1c;--warn:#c47f00;--bad:#d9453f;--series-1:#4f8a1e}
 *{box-sizing:border-box}html,body{height:100%}body{margin:0;font:13px/1.45 "Helvetica Neue",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
@@ -806,25 +806,180 @@ html[data-skin=classic] .calc-search:hover,html[data-skin=classic] .calc-run:hov
 html[data-skin=classic] .calc-grid .gtools{display:none}
 html[data-skin=classic] .calc-tree-list{padding:6px 8px}
 html[data-skin=classic] .calc-node-row label{font-weight:400!important}
-</style><style>.b95dash{background:#f4f7fa;padding:18px;min-height:100vh;color:#26323a}.b95metrics{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:18px}.b95metrics button{border:0;border-radius:10px;padding:22px;text-align:left;min-height:140px;cursor:pointer;color:#2c3841}.b95metrics span,.b95metrics small{display:block;font-size:14px}.b95metrics strong{display:block;font-size:30px;margin:12px 0}.b95metrics small{font-size:12px}.b95main{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.b95panel{min-width:0;min-height:230px;border-radius:12px;background:white;padding:20px;box-shadow:0 2px 9px #1e304010;overflow:auto}.b95panel.wide{grid-column:span 2}.b95panel h2{font-size:17px;margin:0 0 18px;color:#202c34}.b95panel h2 select{float:right;max-width:130px;height:32px}.b95panel>button,.b95quick button{border:1px solid #e1e8ed;background:#f8fafb;color:#2d4757;border-radius:7px;padding:10px;cursor:pointer}.b95quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.b95quick button{min-height:66px}.b95panel .donut{width:180px;max-width:100%;display:block;margin:auto}.b95panel .lg{flex-wrap:wrap}@media(max-width:1250px){.b95metrics{grid-template-columns:repeat(3,1fr)}.b95main{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.b95metrics,.b95main{grid-template-columns:1fr 1fr}.b95panel.wide{grid-column:span 2}}@media(max-width:500px){.b95metrics,.b95main{grid-template-columns:1fr}.b95panel.wide{grid-column:span 1}}</style><link rel="stylesheet" href="/bio95-dashboard.css"><script>try{var sk='classic';localStorage.skin=sk;document.documentElement.dataset.skin=sk;var t='light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.skin='classic';document.documentElement.dataset.theme='light'}</script></head><body>
-<style>#firstSetup{display:none;position:fixed;inset:0;z-index:99999;background:#0006;align-items:center;justify-content:center;padding:20px}#firstSetup .fsbox{width:min(460px,100%);background:#fff;border-radius:5px;box-shadow:0 18px 60px #0004;padding:30px;color:#343b42}#firstSetup h2{color:#75bd3d;text-align:center;margin:0 0 20px}#firstSetup label{display:block;margin:13px 0 4px}#firstSetup input{width:100%;height:40px;border:1px solid #c9d0d5;border-radius:3px;padding:8px;font-size:15px}#firstSetup button{background:#78bf3e;color:white;border:0;border-radius:3px;padding:11px 25px;float:right;margin-top:20px;cursor:pointer}#firstSetup .fserr{color:#b3261e;min-height:1.3em}#login{background:#f2f4f4!important}#login .zl{justify-content:center;align-items:center;padding:32px 16px}#login .zlt{background:#7ac43c;height:auto!important;min-height:0!important;width:min(400px,42%);padding:55px 25px;align-self:stretch}#login .zlt img{width:100%}#login .zlb{background:white!important;min-height:0!important;width:min(520px,58%);padding:30px 38px!important;align-self:stretch}#login .zl{flex-direction:row;flex-wrap:wrap;max-width:1100px;min-height:auto;margin:auto}#login .zlbox{max-width:100%}#login .zlbox h1{text-align:center;color:#79c23d;font-size:28px;letter-spacing:.02em;margin:0 0 6px}#login .zlsub{text-align:center;color:#343b42;font-size:16px;margin:0 0 24px}#login .zltabs{justify-content:center;margin-bottom:20px!important}#login .zltabs a.on{color:#79c23d!important}#login .zltabs a:not(.on){color:#343b42!important}#login .zllabel{display:block;color:#343b42;font-size:13px;margin-bottom:5px}#login .zlbox .zlin>input{border:1px solid #d4d9dc;border-radius:2px;margin-bottom:13px;height:44px}#login .zlagree{color:#6b7378;margin:2px 0 13px}#login .zlbox .zlbuttons button{background:#79c23d;border:0;border-radius:2px}#login .zlf{width:100%;flex:0 0 100%;background:transparent;padding:20px 0 0;color:#71777a}@media(max-width:700px){#login .zl{display:block;min-height:100svh;padding:15px}#login .zlt,#login .zlb{width:100%;max-width:520px;margin:auto}#login .zlt{height:140px!important;padding:18px}#login .zlt img{max-height:100%}#login .zlb{padding:25px!important}}</style>
+</style><style>.b95dash{background:#f4f7fa;padding:18px;min-height:100vh;color:#26323a}.b95metrics{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:14px;margin-bottom:18px}.b95metrics button{border:0;border-radius:10px;padding:22px;text-align:left;min-height:140px;cursor:pointer;color:#2c3841}.b95metrics span,.b95metrics small{display:block;font-size:14px}.b95metrics strong{display:block;font-size:30px;margin:12px 0}.b95metrics small{font-size:12px}.b95main{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.b95panel{min-width:0;min-height:230px;border-radius:12px;background:white;padding:20px;box-shadow:0 2px 9px #1e304010;overflow:auto}.b95panel.wide{grid-column:span 2}.b95panel h2{font-size:17px;margin:0 0 18px;color:#202c34}.b95panel h2 select{float:right;max-width:130px;height:32px}.b95panel>button,.b95quick button{border:1px solid #e1e8ed;background:#f8fafb;color:#2d4757;border-radius:7px;padding:10px;cursor:pointer}.b95quick{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.b95quick button{min-height:66px}.b95panel .donut{width:180px;max-width:100%;display:block;margin:auto}.b95panel .lg{flex-wrap:wrap}@media(max-width:1250px){.b95metrics{grid-template-columns:repeat(3,1fr)}.b95main{grid-template-columns:repeat(2,1fr)}}@media(max-width:700px){.b95metrics,.b95main{grid-template-columns:1fr 1fr}.b95panel.wide{grid-column:span 2}}@media(max-width:500px){.b95metrics,.b95main{grid-template-columns:1fr}.b95panel.wide{grid-column:span 1}}</style><link rel="stylesheet" href="/bio95-dashboard.css"><link rel="stylesheet" href="/bio95-login.css"><script>try{var sk='classic';localStorage.skin=sk;document.documentElement.dataset.skin=sk;var t='light';document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.skin='classic';document.documentElement.dataset.theme='light'}</script></head><body>
+<style>#firstSetup{display:none;position:fixed;inset:0;z-index:99999;background:#0006;align-items:center;justify-content:center;padding:20px}#firstSetup .fsbox{width:min(460px,100%);background:#fff;border-radius:5px;box-shadow:0 18px 60px #0004;padding:30px;color:#343b42}#firstSetup h2{color:#75bd3d;text-align:center;margin:0 0 20px}#firstSetup label{display:block;margin:13px 0 4px}#firstSetup input{width:100%;height:40px;border:1px solid #c9d0d5;border-radius:3px;padding:8px;font-size:15px}#firstSetup button{background:#78bf3e;color:white;border:0;border-radius:3px;padding:11px 25px;float:right;margin-top:20px;cursor:pointer}#firstSetup .fserr{color:#b3261e;min-height:1.3em}</style>
 <div id="firstSetup"><form class="fsbox" onsubmit="createFirstAdmin(event)"><h2>Create administrator</h2><p>Set up the first account for this server.</p><label for="fsuser">Username *</label><input id="fsuser" autocomplete="username" required minlength="3"><label for="fsemail">Email</label><input id="fsemail" type="email" autocomplete="email"><label for="fspass">Password *</label><input id="fspass" type="password" autocomplete="new-password" required minlength="10"><label for="fsconfirm">Confirm password *</label><input id="fsconfirm" type="password" autocomplete="new-password" required minlength="10"><div id="fserr" class="fserr" role="alert"></div><button type="submit">Confirm</button><div style="clear:both"></div></form></div>
-<div id="login"><div class="zl"><div class="zlt"><img src="/logo_BioTime.png" alt="ZKBio Time"></div>
- <div class="zlb"><div class="zlbox"><h1>WELCOME BACK</h1><p class="zlsub">Time &amp; Attendance Management</p><div class="zltabs"><a class="on">Administrator</a><i>|</i><a href="/portal">Employee</a></div>
-  <label class="zllabel" for="u">Username</label><div class="zlin"><input id="u" placeholder="e.g. admin" autocomplete="username"></div><label class="zllabel" for="p">Password</label><div class="zlin"><input id="p" type="password" placeholder="Enter your password" autocomplete="current-password"></div>
-  <label class="zlagree"><input id="lgagree" type="checkbox"><span>I have read and agree to the Privacy Policy and Data Processing Agreement.</span></label>
-  <div class="zlbuttons"><button onclick="login()"><svg viewBox="0 0 24 24"><circle cx="8" cy="15" r="3"/><path d="m10 13 9-9 2 2-2 2 2 2-2 2-2-2-5 5"/></svg>Login</button></div><p id="le" class="err" style="display:none"></p></div></div>
- <div class="zlf"><div class="zlfl"><img src="/logo_zk.png" alt="ZKTeco"></div>Copyright &copy;2026 ZKT. All rights reserved.</div></div></div>
+<div id="login"><div class="zl"><div class="zlwrap"><div class="zlcard">
+ <div class="zlt">
+  <div class="zlbrand" aria-label="BioTime 9.5">
+   <svg viewBox="0 0 320 96" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="BioTime 9.5">
+    <path d="M84 62 A34 34 0 1 1 82 28" fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round"/>
+    <path d="M36 47 L49 60 L76 28" fill="none" stroke="#363c42" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="72" y="61" fill="#363c42" font-family="Helvetica Neue, Arial, sans-serif" font-size="37" font-weight="800" letter-spacing="-0.6">BioTime</text>
+    <text x="234" y="61" fill="#ffffff" font-family="Helvetica Neue, Arial, sans-serif" font-size="34" font-weight="800" font-style="italic" letter-spacing="-0.5">9.5</text>
+   </svg>
+  </div>
+  <div class="zlillus" aria-hidden="true">
+   <svg viewBox="0 0 360 235" xmlns="http://www.w3.org/2000/svg">
+    <!-- Decorative dashed flight path & paper plane -->
+    <path d="M210 42 C228 16, 260 12, 276 24" fill="none" stroke="#385b22" stroke-width="1.4" stroke-dasharray="4 4" opacity="0.65"/>
+    <polygon points="278,16 298,27 277,31 282,25" fill="#f2a666"/>
+    <polygon points="278,16 282,25 277,31" fill="#d97b38"/>
+    <!-- White burst accents -->
+    <g stroke="#ffffff" stroke-width="1.8" stroke-linecap="round" opacity="0.88">
+     <line x1="110" y1="62" x2="103" y2="54"/><line x1="118" y1="58" x2="115" y2="49"/><line x1="126" y1="60" x2="128" y2="51"/>
+     <line x1="252" y1="58" x2="258" y2="50"/><line x1="262" y1="64" x2="270" y2="59"/><line x1="258" y1="73" x2="267" y2="73"/>
+    </g>
+    <!-- Fluffy white clouds -->
+    <path d="M52 135 h34 a8 8 0 0 0 0 -16 a11 11 0 0 0 -20 -4 a8 8 0 0 0 -14 6 a7 7 0 0 0 0 14 z" fill="#ffffff" opacity="0.95"/>
+    <path d="M276 112 h30 a7 7 0 0 0 0 -14 a10 10 0 0 0 -18 -3 a7 7 0 0 0 -12 5 a6 6 0 0 0 0 12 z" fill="#ffffff" opacity="0.95"/>
+    <path d="M84 94 h16 a4 4 0 0 0 0 -8 a6 6 0 0 0 -10 -2 a4 4 0 0 0 -6 3 a3.5 3.5 0 0 0 0 7 z" fill="#ffffff" opacity="0.9"/>
+    <path d="M272 78 h14 a3.5 3.5 0 0 0 0 -7 a5 5 0 0 0 -9 -1.5 a3.5 3.5 0 0 0 -5 2.5 a3 3 0 0 0 0 6 z" fill="#ffffff" opacity="0.9"/>
+    <!-- Background gears -->
+    <g fill="#8ccdc0" opacity="0.82">
+     <circle cx="116" cy="140" r="24"/>
+     <g transform="translate(116,140)">
+      <rect x="-5" y="-32" width="10" height="10" rx="2"/><rect x="-5" y="22" width="10" height="10" rx="2"/>
+      <rect x="-32" y="-5" width="10" height="10" rx="2"/><rect x="22" y="-5" width="10" height="10" rx="2"/>
+      <rect x="-5" y="-32" width="10" height="10" rx="2" transform="rotate(45)"/><rect x="-5" y="22" width="10" height="10" rx="2" transform="rotate(45)"/>
+      <rect x="-32" y="-5" width="10" height="10" rx="2" transform="rotate(45)"/><rect x="22" y="-5" width="10" height="10" rx="2" transform="rotate(45)"/>
+     </g>
+     <circle cx="116" cy="140" r="10" fill="#73b839"/>
+     <circle cx="250" cy="144" r="28"/>
+     <g transform="translate(250,144)">
+      <rect x="-6" y="-37" width="12" height="11" rx="2"/><rect x="-6" y="26" width="12" height="11" rx="2"/>
+      <rect x="-37" y="-6" width="11" height="12" rx="2"/><rect x="26" y="-6" width="11" height="12" rx="2"/>
+      <rect x="-6" y="-37" width="12" height="11" rx="2" transform="rotate(45)"/><rect x="-6" y="26" width="12" height="11" rx="2" transform="rotate(45)"/>
+      <rect x="-37" y="-6" width="11" height="12" rx="2" transform="rotate(45)"/><rect x="26" y="-6" width="11" height="12" rx="2" transform="rotate(45)"/>
+     </g>
+     <circle cx="250" cy="144" r="12" fill="#73b839"/>
+    </g>
+    <!-- Leaf tufts behind clock -->
+    <path d="M188 86 C188 60, 206 46, 212 52 C217 58, 207 78, 196 90 Z" fill="#9cd7b8"/>
+    <path d="M198 92 C210 68, 226 62, 229 69 C232 76, 216 90, 204 97 Z" fill="#4f995d"/>
+    <!-- Big Clock -->
+    <circle cx="184" cy="146" r="66" fill="#ffffff" stroke="#313740" stroke-width="6.5"/>
+    <!-- Clock tick marks -->
+    <g stroke="#313740" stroke-width="2" stroke-linecap="round">
+     <line x1="184" y1="88" x2="184" y2="94"/><line x1="184" y1="198" x2="184" y2="204"/>
+     <line x1="126" y1="146" x2="132" y2="146"/><line x1="236" y1="146" x2="242" y2="146"/>
+     <line x1="155" y1="96" x2="158" y2="101"/><line x1="213" y1="96" x2="210" y2="101"/>
+     <line x1="134" y1="117" x2="139" y2="120"/><line x1="234" y1="117" x2="229" y2="120"/>
+     <line x1="134" y1="175" x2="139" y2="172"/><line x1="234" y1="175" x2="229" y2="172"/>
+     <line x1="155" y1="196" x2="158" y2="191"/><line x1="213" y1="196" x2="210" y2="191"/>
+    </g>
+    <!-- Green clock hands -->
+    <path d="M184 146 L154 126" stroke="#73b839" stroke-width="6" stroke-linecap="round"/>
+    <path d="M184 146 L216 122" stroke="#73b839" stroke-width="5.5" stroke-linecap="round"/>
+    <circle cx="184" cy="146" r="5" fill="#313740"/>
+    <!-- Person 1: Sitting on top of clock with laptop -->
+    <g>
+     <circle cx="176" cy="54" r="6.5" fill="#f3c6a5"/>
+     <path d="M170 52 C170 46, 182 45, 183 52 C180 50, 174 50, 170 52 Z" fill="#2d3138"/>
+     <path d="M167 64 C167 60, 184 60, 185 65 L186 80 L166 80 Z" fill="#5e549b"/>
+     <path d="M167 79 L174 102 L179 102 L176 80 Z" fill="#2e72a1"/>
+     <path d="M178 79 L185 104 L190 104 L185 80 Z" fill="#235b82"/>
+     <rect x="171" y="70" width="16" height="10" rx="1.5" fill="#e5e9f0" stroke="#47505c" stroke-width="1.2"/>
+    </g>
+    <!-- Person 2: Woman far left -->
+    <g>
+     <circle cx="96" cy="144" r="6" fill="#f3c6a5"/>
+     <path d="M90 144 C90 137, 102 137, 102 145 L103 150 L90 150 Z" fill="#2d2633"/>
+     <path d="M88 153 L104 153 L109 184 L85 184 Z" fill="#53315c"/>
+     <path d="M89 154 L78 134" stroke="#53315c" stroke-width="4.5" stroke-linecap="round"/>
+     <path d="M103 154 L110 138" stroke="#53315c" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="92" y1="184" x2="90" y2="212" stroke="#36424d" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="101" y1="184" x2="104" y2="212" stroke="#36424d" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <!-- Person 3: Seated man with laptop bottom-left -->
+    <g>
+     <path d="M118 186 L118 212 M136 196 L136 212 M118 196 L138 196" stroke="#c8933c" stroke-width="2.5" stroke-linecap="round"/>
+     <circle cx="129" cy="164" r="6" fill="#f3c6a5"/>
+     <path d="M123 163 C124 157, 134 157, 135 163 Z" fill="#2d3138"/>
+     <path d="M121 172 L135 172 L137 195 L121 195 Z" fill="#8b96a3"/>
+     <path d="M124 194 L147 194 L152 211 L146 211 L142 199 L124 199 Z" fill="#1e7588"/>
+     <polygon points="139,181 157,181 153,192 135,192" fill="#3a404a"/>
+    </g>
+    <!-- Person 4: Right side with megaphone -->
+    <g>
+     <circle cx="242" cy="154" r="6" fill="#f3c6a5"/>
+     <path d="M236 153 C237 147, 247 147, 248 153 Z" fill="#2d3138"/>
+     <path d="M234 162 L249 162 L251 187 L233 187 Z" fill="#ec8b58"/>
+     <path d="M235 166 L221 161" stroke="#ec8b58" stroke-width="4.5" stroke-linecap="round"/>
+     <polygon points="212,155 224,159 224,165 212,168" fill="#5e549b"/>
+     <line x1="238" y1="187" x2="236" y2="212" stroke="#2f3742" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="246" y1="187" x2="249" y2="212" stroke="#2f3742" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <!-- Person 5: Far right celebrating -->
+    <g>
+     <circle cx="288" cy="144" r="6" fill="#f3c6a5"/>
+     <path d="M282 143 C283 137, 293 137, 294 143 Z" fill="#2d3138"/>
+     <path d="M280 152 L296 152 L295 178 L281 178 Z" fill="#f8fafc"/>
+     <path d="M281 154 L271 136" stroke="#f8fafc" stroke-width="4.5" stroke-linecap="round"/>
+     <path d="M295 154 L305 136" stroke="#f8fafc" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="285" y1="178" x2="282" y2="212" stroke="#363c44" stroke-width="4.5" stroke-linecap="round"/>
+     <line x1="292" y1="178" x2="296" y2="212" stroke="#363c44" stroke-width="4.5" stroke-linecap="round"/>
+    </g>
+    <!-- Ground line -->
+    <line x1="66" y1="214" x2="306" y2="214" stroke="#2d353c" stroke-width="1.8" stroke-linecap="round"/>
+   </svg>
+  </div>
+  <div class="zlleft-icons">
+   <button type="button" onclick="showLoginInfo()" title="About BioTime" aria-label="About BioTime">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"><circle cx="16" cy="16" r="14.5" fill="#ffffff"/><circle cx="16" cy="10.2" r="1.9" fill="#73b839"/><rect x="14.4" y="14" width="3.2" height="9.2" rx="1.4" fill="#73b839"/></svg>
+   </button>
+   <button type="button" onclick="showLoginLang()" title="Language" aria-label="Language">
+    <svg viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#ffffff" stroke-width="2"><circle cx="16" cy="16" r="13.5"/><ellipse cx="16" cy="16" rx="6.2" ry="13.5"/><line x1="2.8" y1="16" x2="29.2" y2="16"/><path d="M5.2 9.5 C9 11.4, 23 11.4, 26.8 9.5"/><path d="M5.2 22.5 C9 20.6, 23 20.6, 26.8 22.5"/></svg>
+   </button>
+  </div>
+ </div>
+ <div class="zlb"><div class="zlbox">
+  <h1>WELCOME BACK</h1>
+  <p class="zlsub">Time &amp; Attendance Management</p>
+  <div class="zltabs"><a class="on" href="javascript:void(0)">Administrator</a><i>|</i><a href="/portal">Employee</a></div>
+  <label class="zllabel" for="u">Username</label>
+  <div class="zlin"><input id="u" placeholder="e.g. admin" aria-label="Username" autocomplete="username" onkeydown="if(event.key==='Enter')login()"></div>
+  <label class="zllabel" for="p">Password</label>
+  <div class="zlin"><input id="p" type="password" placeholder="Enter your password" aria-label="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')login()"></div>
+  <div class="zlopts">
+   <label class="zlrem"><input id="lgrem" type="checkbox" checked><span>Remember me</span></label>
+   <a class="zlforgot" href="javascript:void(0)" onclick="showForgotPw()">Forgot password?</a>
+  </div>
+  <div class="zlbuttons">
+   <button class="zlsubmit" type="button" onclick="login()">Login</button>
+   <button class="zlfp" type="button" onclick="fpLogin()" title="Biometric / Fingerprint Login" aria-label="Biometric Login">
+    <svg viewBox="0 0 32 32" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" xmlns="http://www.w3.org/2000/svg">
+     <path d="M16 4.5 C10 4.5, 5.5 9.2, 5.5 15.5 C5.5 18.2, 6.2 20.8, 7.4 23"/>
+     <path d="M16 4.5 C22 4.5, 26.5 9.2, 26.5 15.5 C26.5 19.2, 25.4 22.4, 23.6 25"/>
+     <path d="M16 8.2 C11.8 8.2, 8.8 11.4, 8.8 15.6 C8.8 19.2, 10.1 22.6, 12.2 25.5"/>
+     <path d="M16 8.2 C20.2 8.2, 23.2 11.4, 23.2 15.6 C23.2 19.5, 21.8 23.2, 19.8 26.2"/>
+     <path d="M16 11.8 C13.7 11.8, 12.2 13.5, 12.2 15.8 C12.2 19.5, 13.7 23.4, 16.2 26.8"/>
+     <path d="M16 11.8 C18.3 11.8, 19.8 13.5, 19.8 15.8 C19.8 18.4, 19.1 20.8, 18 22.8"/>
+     <path d="M16 15.4 C15.8 18.4, 16.6 21.6, 18.5 24.4"/>
+    </svg>
+   </button>
+  </div>
+  <p id="le" class="err" style="display:none"></p>
+  <div class="zlsocial" aria-label="Social links">
+   <a href="javascript:void(0)" title="X" aria-label="X"><svg viewBox="0 0 24 24" fill="#111111"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
+   <a href="javascript:void(0)" title="Facebook" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="#2f4d8a"><path d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z"/></svg></a>
+   <a href="javascript:void(0)" title="YouTube" aria-label="YouTube"><svg viewBox="0 0 24 24" fill="#e52d27"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></a>
+   <a href="javascript:void(0)" title="LinkedIn" aria-label="LinkedIn"><svg viewBox="0 0 24 24" fill="#1b74b8"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg></a>
+  </div>
+ </div></div>
+</div></div>
+ <div class="zlf"><div class="zlfl"><img src="/logo_zk.png" alt="ZKTeco"></div><div>Copyright &copy;2026 ZKTeco Security LLC. All rights reserved.</div><div class="zlf-links"><a href="javascript:void(0)" onclick="showLegalModal('dpa')">Data Processing Agreement</a> <a href="javascript:void(0)" onclick="showLegalModal('privacy')">Personal Information Protection and Privacy Policy</a></div></div>
+</div></div>
 <div id="tip"></div>
 <div id="app"><aside id="side"><div id="logo" onclick="goHome()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>ZKT</span></div>
  <div id="sideico"><svg viewBox="0 0 24 24" fill="currentColor" onclick="bmMenu(event)" title="Bookmarks"><path d="M3 12V4h8l9 9-8 8z" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/><circle cx="7.5" cy="8.5" r="1.5"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" onclick="sideSearch()" title="Search menu"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" onclick="sideFold()" title="Collapse all groups"><path d="M3 5h18M11 10h10M11 15h10M3 20h18M7 9l-4 3 4 3z" fill="currentColor"/></svg></div>
  <div id="sidetools"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input id="msearch" placeholder="Search menu" oninput="menuSearch()"></div><div id="menu"></div><div id="sidefoot"><div id="sideuser" onclick="go('My alerts')" title="My alerts"><div class="av" id="suav">A</div><div class="su"><b id="sun">admin</b><span id="sur">Administrator</span></div></div><button class="g sm" id="railbtn" onclick="toggleRail()" title="Collapse or expand the menu">&#8644;</button></div></aside>
- <section id="work"><header id="top"><div id="hlogo" onclick="goHome()"><img src="/logo_zk.png" alt="ZKTeco"></div><div id="burger" onclick="document.getElementById('app').classList.toggle('sideopen')">&#9776;</div><ul id="mods"></ul><div id="crumb"></div><div style="flex:1"></div>
+ <section id="work"><header id="top"><div id="hlogo" onclick="goHome()" aria-label="ZKTeco"><svg viewBox="0 0 180 40" width="118" height="26" xmlns="http://www.w3.org/2000/svg"><text x="2" y="31" font-family="Helvetica Neue, Arial, sans-serif" font-size="33" font-weight="900" font-style="italic" letter-spacing="-1.5" fill="#2c3035">ZK</text><text x="48" y="31" font-family="Helvetica Neue, Arial, sans-serif" font-size="33" font-weight="900" font-style="italic" letter-spacing="-1" fill="#ffffff">T</text><text x="71" y="31" font-family="Helvetica Neue, Arial, sans-serif" font-size="19" font-weight="800" font-style="italic" letter-spacing="0.5" fill="#ffffff">ECO</text></svg></div><div id="burger" onclick="document.getElementById('app').classList.toggle('sideopen')">&#9776;</div><ul id="mods"></ul><div id="crumb"></div><div style="flex:1"></div>
   <button id="cmdk" class="g" onclick="palette()" title="Search everything (Ctrl+K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span>Search</span><kbd>Ctrl K</kbd></button>
-  <div id="tr"><div class="tb" id="editbtn" onclick="go('Announcements')" title="Announcements"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16zM13 7l4 4M12 20h8"/></svg></div><div class="tb" id="themebtn" onclick="toggleTheme()" title="Light / dark"></div><div class="tb" onclick="go('Notifications')" title="Notifications"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg><span class="bell"></span></div>
+  <div id="tr"><div class="tb" id="editbtn" onclick="openFeedbackModal()" title="Feedback"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H5a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h13a2 2 0 0 0 2-2v-6"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div><div class="tb" id="themebtn" onclick="toggleTheme()" title="Light / dark"></div><div class="tb" id="notifbtn" onclick="openNotifModal()" title="Notification"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg><span class="bell"></span></div>
   
   <div id="user" onclick="event.stopPropagation();document.getElementById('umenu').classList.toggle('show')"><div class="av" id="uav">A</div><span>&#9662;</span><div id="umenu"></div></div></div></header>
-  <div id="bmbar"><button class="bmb" onclick="bmMenu(event)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v14H8.5A2.5 2.5 0 0 0 6 19.5z"/><path d="M6 19.5A2.5 2.5 0 0 0 8.5 22H18v-3H8.5"/></svg>Bookmarks <i></i></button><span class="bmsep"></span><button class="bmb" onclick="fltMenu(event)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg>Filter <span id="fltbadge" style="display:none;background:#4f8a1e;color:#fff;border-radius:8px;padding:0 5px;font-size:10px;margin-left:3px">0</span><i></i></button></div><div id="tabs"></div><main id="main"></main></section></div>
+  <div id="bmbar"><button class="bmb" onclick="bmMenu(event)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 3h12v14H8.5A2.5 2.5 0 0 0 6 19.5z"/><path d="M6 19.5A2.5 2.5 0 0 0 8.5 22H18v-3H8.5"/></svg>Bookmarks <i></i></button><span class="bmsep"></span><button class="bmb" onclick="fltMenu(event)"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 4h18l-7 8v7l-4 2v-9z"/></svg>Filter <span id="fltbadge" style="display:none;background:#4f8a1e;color:#fff;border-radius:8px;padding:0 5px;font-size:10px;margin-left:3px">0</span><i></i></button></div><div id="tabs"></div><main id="main"></main></section><button type="button" class="b95fab" title="Feedback / Assistant" onclick="openFeedbackModal()" aria-label="Feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="13" y2="13"/></svg></button></div>
 <script>
 const $=s=>document.querySelector(s);let T=sessionStorage.t||'';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -833,7 +988,13 @@ async function api(path,method='GET',body){
   const j=await r.json().catch(()=>({}));if(r.status===401&&path!=='login'){logout();throw Error('Login required')}
   if(!r.ok)throw Error(j.error||r.statusText);return j}
 function toggleLoginPassword(b){const p=$('#p'),show=p.type==='password';p.type=show?'text':'password';b.title=show?'Hide password':'Show password';b.setAttribute('aria-label',b.title)}
-async function login(){const er=$('#le');if(!$('#lgagree').checked){er.textContent='Please accept the Privacy Policy and Data Processing Agreement.';er.style.display='block';return}try{er.style.display='none';const j=await api('login','POST',{username:$('#u').value,password:$('#p').value});T=j.token;sessionStorage.t=T;boot()}catch(e){er.textContent=e.message;er.style.display='block'}}
+function showForgotPw(){const er=$('#le');er.textContent='Please contact your system administrator to reset your password.';er.style.display='block'}
+function showLoginInfo(){const er=$('#le');er.textContent='BioTime 9.5 — Time & Attendance Management System.';er.style.display='block'}
+function showLoginLang(){const er=$('#le');er.textContent='Language: English (default). Employee portal also supports Urdu.';er.style.display='block'}
+function showLegalModal(k){const er=$('#le');er.textContent=k==='dpa'?'Data Processing Agreement applies to all attendance and biometric records stored on this server.':'Personal Information Protection and Privacy Policy applies to user credentials and attendance logs.';er.style.display='block'}
+function fpLogin(){const er=$('#le');er.textContent='Connect a registered biometric/fingerprint reader or sign in with your username and password.';er.style.display='block'}
+try{const su=localStorage.getItem('bt_rem_user');if(su){setTimeout(()=>{const u=$('#u');if(u&&!u.value)u.value=su},0)}}catch{}
+async function login(){const er=$('#le');try{er.style.display='none';const username=$('#u').value;const rem=$('#lgrem');try{if(rem&&rem.checked)localStorage.setItem('bt_rem_user',username);else localStorage.removeItem('bt_rem_user')}catch{}const j=await api('login','POST',{username,password:$('#p').value});T=j.token;sessionStorage.t=T;boot()}catch(e){er.textContent=e.message;er.style.display='block'}}
 async function createFirstAdmin(e){e.preventDefault();const er=$('#fserr');er.textContent='';try{const username=$('#fsuser').value.trim(),password=$('#fspass').value;await api('setup','POST',{username,email:$('#fsemail').value.trim(),password,confirm:$('#fsconfirm').value});$('#firstSetup').style.display='none';$('#u').value=username;$('#p').value='';$('#p').focus()}catch(x){er.textContent=x.message}}
 async function checkFirstSetup(){try{const s=await api('setup/status');if(s.required){$('#firstSetup').style.display='flex';$('#fsuser').focus()}}catch{}}
 function logout(){T='';sessionStorage.removeItem('t');$('#app').classList.remove('on');$('#app').style.display='none';$('#login').style.display='flex'}
@@ -1442,7 +1603,42 @@ async function setPolicyItem(pid){try{await api('leave/policy-items','POST',{pol
 async function delPI(id,pid){await api('leave/policy-items/'+id,'DELETE');loadPolicy(pid)}
 async function refreshBell(){try{const n=await api('notifications');document.querySelectorAll('.bell').forEach(x=>x.textContent=n.unread||'')}catch{}
   try{const d=await api('dashboard'),b={Leaves:d.pending_leaves,Requests:d.pending_requests,Overtime:d.pending_overtime,Devices:d.pending_devices},old=JSON.stringify(window.BADGE||{});Object.keys(b).forEach(k=>{if(!b[k])delete b[k]});try{const w=await api('workflow/inbox');const m=w.filter(x=>x.mine).length;if(m)b.Approvals=m}catch{}if(JSON.stringify(b)!==old){window.BADGE=b;if(window.ME&&cur)drawFrame(cur)}}catch{}}
-async function readAll(){await api('notifications/read','POST',{});go('Notifications');refreshBell()}
+async function readAll(){await api('notifications/read','POST',{});if(cur==='Notifications')go('Notifications');refreshBell()}
+function closeB95Modal(){document.getElementById('b95Modal')?.remove();document.querySelectorAll('#tr .tb.b95-tb-on').forEach(x=>x.classList.remove('b95-tb-on'))}
+async function openNotifModal(){
+  closeB95Modal();document.getElementById('notifbtn')?.classList.add('b95-tb-on');
+  const wrap=document.createElement('div');wrap.id='b95Modal';wrap.className='b95-modal-bg';
+  wrap.onclick=e=>{if(e.target===wrap)closeB95Modal()};
+  wrap.innerHTML=`<div class="b95-modal notif" role="dialog" aria-label="Notification"><div class="b95-modal-hd"><span>Notification</span><button type="button" class="b95-modal-x" onclick="closeB95Modal()" aria-label="Close">&times;</button></div><div class="b95-modal-bd" id="b95NotifBody"><div class="b95-notif-none">Loading...</div></div><div class="b95-modal-ft"><button type="button" class="b95-btn-ok" onclick="closeB95Modal()">Confirm</button><button type="button" class="b95-btn-sec" onclick="markAllNotifModal()">Mark All As Read</button></div></div>`;
+  document.body.appendChild(wrap);
+  await renderNotifModal();
+}
+async function renderNotifModal(){
+  const b=document.getElementById('b95NotifBody');if(!b)return;
+  try{
+    const n=await api('notifications');const items=(n&&n.items)||[];
+    b.innerHTML=items.length?items.map(r=>`<div class="b95-notif-item"><div><div>${r.is_read?'':'<span class="b95-notif-dot"></span>'}<b>${esc(r.title||'Notification')}</b></div>${r.body?`<div style="color:#666;margin-top:3px">${esc(r.body)}</div>`:''}<div style="color:#999;font-size:11.5px;margin-top:4px">${esc(r.created||'')}</div></div>${r.link?`<button type="button" class="b95-btn-sec" style="height:28px!important;padding:0 12px!important;flex:none" onclick="closeB95Modal();go('${esc(r.link)}')">Open</button>`:''}</div>`).join(''):'<div class="b95-notif-none">None</div>';
+  }catch{b.innerHTML='<div class="b95-notif-none">None</div>'}
+}
+async function markAllNotifModal(){try{await api('notifications/read','POST',{});refreshBell();await renderNotifModal()}catch(e){alert(e.message)}}
+async function openFeedbackModal(){
+  closeB95Modal();document.getElementById('editbtn')?.classList.add('b95-tb-on');
+  let empCnt=0,devCnt=0;try{const d=await api('dashboard');empCnt=d.employees||0;devCnt=d.devices||0}catch{}
+  const wrap=document.createElement('div');wrap.id='b95Modal';wrap.className='b95-modal-bg';
+  wrap.onclick=e=>{if(e.target===wrap)closeB95Modal()};
+  wrap.innerHTML=`<div class="b95-modal" role="dialog" aria-label="Feedback"><div class="b95-modal-hd"><span>Feedback</span><button type="button" class="b95-modal-x" onclick="closeB95Modal()" aria-label="Close">&times;</button></div><div class="b95-modal-bd"><div class="b95-fb-grid"><div class="b95-fb-row"><label for="fb_name">Name<em>*</em></label><input id="fb_name" type="text"></div><div class="b95-fb-row"><label for="fb_country">Country<em>*</em></label><input id="fb_country" type="text"></div><div class="b95-fb-row"><label for="fb_email">Email<em>*</em></label><input id="fb_email" type="email"></div><div></div><div class="b95-fb-row"><label for="fb_type">Type<em>*</em></label><select id="fb_type"><option>Suggestion</option><option>Bug Report</option><option>Feature Request</option><option>Other</option></select></div><div class="b95-fb-row"><label for="fb_module">Module<em>*</em></label><select id="fb_module"><option>Personnel</option><option>Device</option><option>Attendance</option><option>Access Control</option><option>System</option></select></div><div class="b95-fb-row"><label for="fb_emp">Employee</label><input id="fb_emp" type="number" min="0" value="${empCnt}"></div><div class="b95-fb-row"><label for="fb_dev">Device</label><input id="fb_dev" type="number" min="0" value="${devCnt}"></div><div class="b95-fb-row full"><label for="fb_desc">Description<em>*</em></label><textarea id="fb_desc"></textarea></div><div class="b95-fb-row full"><label>Attachment</label><div class="b95-fb-up"><input id="fb_file" type="file" style="display:none" onchange="document.getElementById('fb_fname').textContent=this.files[0]?this.files[0].name:''"><button type="button" onclick="document.getElementById('fb_file').click()">Upload</button><span id="fb_fname" class="b95-fb-fname"></span></div></div></div><div id="fb_msg" class="b95-fb-msg"></div></div><div class="b95-modal-ft"><button type="button" class="b95-btn-ok" onclick="submitFeedbackModal()">Submit</button><button type="button" class="b95-btn-sec" onclick="closeB95Modal()">Cancel</button></div></div>`;
+  document.body.appendChild(wrap);
+}
+function submitFeedbackModal(){
+  const msg=document.getElementById('fb_msg');
+  const name=(document.getElementById('fb_name')?.value||'').trim();
+  const country=(document.getElementById('fb_country')?.value||'').trim();
+  const email=(document.getElementById('fb_email')?.value||'').trim();
+  const desc=(document.getElementById('fb_desc')?.value||'').trim();
+  if(!name||!country||!email||!desc){msg.style.color='#d9303e';msg.textContent='Please fill in all required fields (*).';return}
+  msg.style.color='#3d8c40';msg.textContent='Thank you! Your feedback has been submitted.';
+  setTimeout(()=>closeB95Modal(),900);
+}
 
 
 async function otAct(id,act,calc){let body={};if(act==='approve'){const m=prompt(`Minutes to approve (calculated ${calc}):`,calc);if(m===null)return;body={minutes:+m}}else{const n=prompt('Reason for rejecting (optional):');if(n===null)return;body={note:n}}
@@ -1551,33 +1747,123 @@ function zktDash(d,st,wd,X){window.ZD={d,feed:X.mon&&X.mon.feed};const pct=d.emp
    <section class="zp"><div class="zph"><b>To Do List</b><a class="zl" onclick="window.dashEdit=true;go('Dashboard')">Customize</a></div><div class="ztodo">${todoList(todo,X)||'<div class="dx-empty">All caught up.</div>'}</div></section></div></div>`}
 function dashCsv(){const d=document.createElement('a');api('dashboard').then(x=>{const o=['Metric,Value',...Object.entries(x).filter(e=>typeof e[1]!=='object').map(e=>e.join(','))].join('\r\n');d.href=URL.createObjectURL(new Blob(['﻿'+o],{type:'text/csv'}));d.download='dashboard.csv';d.click()})}
 function bio95Dash(d,st,wd,X){
-  const glyph=(path)=>`<svg viewBox="0 0 24 24" aria-hidden="true">${path}</svg>`;
-  const people=glyph('<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2"/><path d="M2 20v-2c0-3 3-5 7-5s7 2 7 5v2M16 14c3 0 6 2 6 5v1"/>');
-  const check=glyph('<circle cx="10" cy="8" r="3"/><path d="M3 20v-2c0-3 3-5 7-5 2 0 3 .3 4 1M16 17l2 2 4-5"/>');
-  const absent=glyph('<circle cx="9" cy="8" r="3"/><path d="M2 20v-2c0-3 3-5 7-5 2 0 3 .3 4 1M17 15l5 5m0-5-5 5"/>');
-  const clock=glyph('<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>');
-  const calendar=glyph('<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4m10-4v4M3 10h18m-11 5h4"/>');
-  const reportIcon=glyph('<path d="M6 2h9l4 4v16H6zM15 2v5h4M9 12h7M9 16h7"/>');
-  const cards=[['Total Employees',d.employees,'#e2efdd','#4b9a39',people,'No new hires this month',"go('Employees')"],['Present Today',d.present,'#d9eafa','#1685ef',check,`${d.employees?Math.round(d.present/d.employees*100):0}% of total`,"go('Attendance')"],['Absent Today',d.absent,'#f7eed1','#ffbd00',absent,`${d.employees?Math.round(d.absent/d.employees*100):0}% of total`,"go('Attendance')"],['Late Arrivals',d.late,'#f4dbe0','#cf3042',clock,`${d.employees?Math.round(d.late/d.employees*100):0}% of total`,"go('Attendance')"],['On Leave',d.leave,'#e6def7','#7548bc',calendar,`${d.employees?Math.round(d.leave/d.employees*100):0}% of total`,"go('Leaves')"],['On Overtime · Yesterday',d.overtime_yesterday,'#dceff2','#12a6b5',clock,'Employees with overtime yesterday',"go('Overtime')"]];
-  const tile=(title,body,wide=false,cls='')=>`<section class="b95panel ${wide?'wide':''} ${cls}"><h2>${title}</h2>${body}</section>`;
-  const range=`<select aria-label="Dashboard range" onchange="window.dashRg=this.value;go('Dashboard')"><option value="week" ${(!window.dashRg||window.dashRg==='week')?'selected':''}>This Week</option><option value="month" ${window.dashRg==='month'?'selected':''}>This Month</option><option value="today" ${window.dashRg==='today'?'selected':''}>Today</option></select>`;
-  const quick=[['Employees','Employees',people,'#4b9a39'],['Approvals','Requests',calendar,'#4694bb'],['Punches','Attendance',check,'#bd8b28'],['Reports','Reports',reportIcon,'#bf4b4b'],['Resigned Employees','Employees',absent,'#c95555'],['User Lists','Users',people,'#478bcc']].map(([n,p,ico,c])=>`<button onclick="go('${p}')"><span class="b95qicon" style="--icon-color:${c}">${ico}</span>${n}</button>`).join('');
+  const gFill=(p)=>`<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${p}</svg>`;
+  const gStroke=(p)=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  const grip='<span class="b95grip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span>';
+  const icoPeople=gFill('<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>');
+  const icoUserCheck=gFill('<path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" transform="translate(-3 0) scale(.92)"/><path d="M16.5 14.5l1.8 1.8 3.7-4.3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>');
+  const icoUserX=gFill('<circle cx="9.5" cy="8" r="3.6"/><path d="M2.5 19.5c0-2.8 3.6-4.5 7-4.5 1.7 0 3.3.4 4.5 1.1v3.4H2.5z"/><path d="M16.5 10.5l4.5 4.5m0-4.5l-4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>');
+  const icoClock=gFill('<path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 10.4 3.4 2a1 1 0 1 1-1 1.73l-3.9-2.25A1 1 0 0 1 11 13V7a1 1 0 0 1 2 0z"/>');
+  const icoCal=gFill('<path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V10h14zm-9-7h4v4h-4z"/>');
+  const icoOT=gFill('<path d="M10 4h4a2 2 0 0 1 2 2v1h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3V6a2 2 0 0 1 2-2zm0 3h4V6h-4zm2 4a3.5 3.5 0 1 0 3.5 3.5A3.5 3.5 0 0 0 12 11zm-.5 1.5h1v2h1.5v1h-2.5z"/>');
+  const icoCalCheck=gFill('<path d="M19 4h-1V2h-2v2H8V2H6v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 16H5V9h14zm-8.5-2.6L7.3 14.2l1.4-1.4 1.8 1.8 4.4-4.4 1.4 1.4z"/>');
+  const icoFp=gStroke('<path d="M12 3a8 8 0 0 0-8 8c0 2.5.6 4.7 1.6 6.6M12 3a8 8 0 0 1 8 8c0 3-.8 5.5-2.2 7.6M12 6.5A4.5 4.5 0 0 0 7.5 11c0 3 1 5.8 2.6 8M12 6.5A4.5 4.5 0 0 1 16.5 11c0 2.6-.7 5-1.9 7M12 10.5c-.2 2.8.5 5.6 2 8"/>');
+  const icoReport=gFill('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm-1 1.5L18.5 9H13zM8 13h8v1.6H8zm0 3.4h8V18H8z"/>');
+  const icoResign=gFill('<circle cx="9.5" cy="8" r="3.6"/><path d="M2.5 19.5c0-2.8 3.6-4.5 7-4.5s7 1.7 7 4.5H2.5z"/><rect x="16" y="10.5" width="6" height="2" rx="1"/>');
+  const icoUser=gFill('<circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-5.5 8-5.5s8 2.2 8 5.5H4z"/>');
+  const icoBolt=gFill('<path d="M13 2L4 14h6l-1 8 9-12h-6z"/>');
+  const icoLateH=gFill('<circle cx="9" cy="8" r="3.2"/><path d="M3 19c0-2.6 3-4.2 6-4.2 1.2 0 2.4.3 3.4.8A5.5 5.5 0 0 0 17.5 19H3z"/><circle cx="17.5" cy="14.5" r="4.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M17.5 12.2v2.4l1.6 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>');
+  const icoSignal=gStroke('<path d="M4.9 19.1a10 10 0 0 1 0-14.2M7.8 16.2a6 6 0 0 1 0-8.4M12 12h.01" stroke-width="2.2"/><circle cx="12" cy="12" r="2" fill="currentColor"/>');
+  const icoDocWarn=(wc)=>`<svg viewBox="0 0 36 28" width="32" height="26" aria-hidden="true"><rect x="1" y="3" width="24" height="19" rx="2.5" fill="#232931"/><circle cx="8" cy="11" r="2.8" fill="#fff"/><path d="M4.5 17.5c0-1.9 1.6-3 3.5-3s3.5 1.1 3.5 3" fill="#fff"/><rect x="14" y="8.5" width="8" height="2" rx="1" fill="#fff"/><rect x="14" y="12.5" width="6" height="2" rx="1" fill="#fff"/><polygon points="27,12 35,26 19,26" fill="${wc}" stroke="#fff" stroke-width="1.2"/><rect x="26.1" y="16.5" width="1.8" height="4.8" rx=".8" fill="#fff"/><circle cx="27" cy="23.4" r="1.1" fill="#fff"/></svg>`;
+
+  const pctOf=v=>`${d.employees?Math.round((v||0)/d.employees*100):0}% of total`;
+  const cards=[
+    ['Total Employees',d.employees,'#d9ead8','#439a46',icoPeople,'No new hires this month',"go('Employees')"],
+    ['Present Today',d.present,'#d7e8fb','#1a73e8',icoUserCheck,pctOf(d.present),"go('Attendance')"],
+    ['Absent Today',d.absent,'#f5eed4','#f4b400',icoUserX,pctOf(d.absent),"go('Attendance')"],
+    ['Late Arrivals',d.late,'#f2d8dc','#d9303e',icoClock,pctOf(d.late),"go('Attendance')"],
+    ['On Leave',d.leave,'#e6dcf5','#7b42bc',icoCal,pctOf(d.leave),"go('Leaves')"],
+    ['On Overtime · Yesterday',d.overtime_yesterday,'#d8e8ed','#0f9bb2',icoOT,'0% vs previous day',"go('Overtime')"]
+  ];
+  const tile=(title,body,wide=false,cls='',hico='')=>`<section class="b95panel ${wide?'wide':''} ${cls}"><h2>${grip}${hico?`<span class="b95hico">${hico}</span>`:''}${title}</h2>${body}</section>`;
+  const rangeSel=`<select aria-label="Dashboard range" onchange="window.dashRg=this.value;go('Dashboard')"><option value="week" ${(!window.dashRg||window.dashRg==='week')?'selected':''}>This Week</option><option value="month" ${window.dashRg==='month'?'selected':''}>This Month</option><option value="today" ${window.dashRg==='today'?'selected':''}>Today</option></select>`;
+  const quick=[
+    ['Employees','Employees',icoPeople,'#439a46'],
+    ['Approvals','Requests',icoCalCheck,'#2c88b8'],
+    ['Punches','Attendance',icoFp,'#c28b22'],
+    ['Reports','Reports',icoReport,'#cc4040'],
+    ['Resigned Employees','Employees',icoResign,'#cc4040'],
+    ['User Lists','Users',icoUser,'#2c88d9']
+  ].map(([n,p,ico,c])=>`<button type="button" onclick="go('${p}')"><span class="b95qicon" style="--icon-color:${c}">${ico}</span>${n}</button>`).join('');
+
   const latest=(X.mon&&X.mon.feed)||[],dept=(st&&st.departments)||[],monthly=(X.monthly&&X.monthly.rows)||[];
   const exp=(X.ct||[]).map(r=>r.end_date).filter(Boolean),td=today(),weekEnd=addD(td,6),monthEnd=td.slice(0,7)+'-31';
   const expToday=exp.filter(x=>x===td).length,expWeek=exp.filter(x=>x>=td&&x<=weekEnd).length,expMonth=exp.filter(x=>x>=td&&x<=monthEnd).length;
-  const trend=new Map((wd.trend7||[]).map(r=>[r.date,r])),days=Array.from({length:7},(_,i)=>{const date=addD(today(),i-6),r=trend.get(date)||{};return {l:date.slice(5),present:r.present||0,absent:r.absent||0,late:r.late||0}});
-  const status=[{v:d.present,c:'#78c33b',l:'Present'},{v:d.absent,c:'#ffbf00',l:'Absent'},{v:d.late,c:'#df3349',l:'Late'},{v:d.leave,c:'#7042c2',l:'On Leave'}];
-  return `<div class="b95dash"><div class="b95metrics">${cards.map(([n,v,bg,c,ico,note,a])=>`<button style="background:${bg};--icon-color:${c}" onclick="${a}"><span class="b95icon">${ico}</span><span>${n}</span><strong>${v||0}</strong><small>${note}</small></button>`).join('')}</div><div class="b95main">
-  ${tile('Attendance Overview '+range,zdChart(days,[{k:'present',c:'#78c33b'},{k:'absent',c:'#ffbf00'},{k:'late',c:'#df3349'}]),true)}
-  ${tile('HR Quick Access',`<div class="b95quick">${quick}</div>`)}
-  ${tile('Real-time Status',`<div class="b95status">${donut(status,String(d.employees),'employees')}</div><div class="b95hint">${d.employees?Math.round(d.present/d.employees*100)+'% attendance today.':'Attention: Your organization has 0% attendance today.'}</div>`)}
-  ${tile('Department Attendance',dept.length?zdChart(dept.slice(0,8).map(r=>({l:r.dept,rate:r.rate})),[{k:'rate',c:'#78c33b'}],{max:100}):'<p>No departments yet.</p>')}
-  ${tile('Overtime Analysis',monthly.length?zdChart(monthly.slice(0,8).map(r=>({l:r.dept,ot:r.ot_h})),[{k:'ot',c:'#4b9cd1'}]):'<p>No overtime in this period.</p>')}
-  ${tile('Attendance by Shift',`<p>View employee schedules and shift assignments.</p><button onclick="go('Roster')">Open schedules</button>`)}
-  ${tile('Leave Overview',`<strong>${d.leave||0}</strong><p>Employees on leave today</p><button onclick="go('Leaves')">View leave</button>`)}
-  ${tile('Top Late Arrivals Today',(wd.late_today&&wd.late_today.length?wd.late_today.map(r=>`<p>${esc(r.name)} · ${r.late_min} min</p>`).join(''):'<div class="b95empty">✓<br>No late arrivals today!</div>')+`<button class="b95link" onclick="go('Attendance')">View All Late Arrivals →</button>`,false,'b95list')}
-  ${tile('Real-Time Monitoring',latest.length?rtmHtml(latest):'<div class="b95empty">No recent activity today.</div>',false,'b95list')}
-  ${tile('HR Overview',`<div class="b95hr"><div>Document Expiry (Today)<strong>${expToday}</strong><button class="b95link" onclick="go('Contracts')">View Details</button></div><div>Document Expiry (This Week)<strong>${expWeek}</strong><button class="b95link" onclick="go('Contracts')">View Details</button></div><div>Document Expiry (This Month)<strong>${expMonth}</strong><button class="b95link" onclick="go('Contracts')">View Details</button></div><div>Upcoming Birthdays<br><button class="b95link" onclick="go('Employees')">View All Birthdays →</button></div><div>Attendance Insights<br><small>${d.present||0} of ${d.employees||0} employees present today.</small></div></div>`,true,'b95list')}
+
+  // Format last 7 days as "Nov 19" ... "Nov 25"
+  const MNS=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const WDS=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const trend=new Map((wd.trend7||[]).map(r=>[r.date,r]));
+  const days=Array.from({length:7},(_,i)=>{
+    const ds=addD(td,i-6),dt=new Date(ds+'T00:00:00'),r=trend.get(ds)||{};
+    return {l:`${MNS[dt.getMonth()]} ${dt.getDate()}`,wd:WDS[dt.getDay()],present:r.present||0,absent:r.absent||0,late:r.late||0};
+  });
+
+  // Clean BioTime 9.5 Attendance Overview line chart
+  const attChart=()=>{
+    const W=540,H=210,pl=34,pr=18,pt=16,pb=28,cw=W-pl-pr,ch=H-pt-pb;
+    const rawMax=Math.max(0,...days.flatMap(r=>[r.present,r.absent,r.late]));
+    const maxV=rawMax>0?Math.ceil(rawMax*1.2):1;
+    const ticks=rawMax>0?[0,0.25,0.5,0.75,1].map(f=>Math.round(maxV*f)):[0,0.2,0.4,0.6,0.8,1];
+    const yPos=v=>pt+ch-(v/maxV)*ch;
+    const xPos=i=>pl+(days.length>1?(i/(days.length-1))*cw:cw/2);
+    const grid=ticks.map(v=>`<line x1="${pl}" y1="${yPos(v).toFixed(1)}" x2="${W-pr}" y2="${yPos(v).toFixed(1)}" stroke="#e5e9f0" stroke-width="1"/><text x="${pl-8}" y="${(yPos(v)+4).toFixed(1)}" text-anchor="end" font-size="11" fill="#4b5563">${v}</text>`).join('');
+    const xLabels=days.map((r,i)=>`<text x="${xPos(i).toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="11" fill="#4b5563">${r.l}</text>`).join('');
+    const series=[['present','#78c33b'],['absent','#ffbf00'],['late','#df3349']].map(([k,c])=>{
+      const pts=days.map((r,i)=>`${xPos(i).toFixed(1)},${yPos(r[k]).toFixed(1)}`).join(' ');
+      const dots=days.map((r,i)=>`<circle cx="${xPos(i).toFixed(1)}" cy="${yPos(r[k]).toFixed(1)}" r="3.2" fill="#fff" stroke="${c}" stroke-width="1.8"/>`).join('');
+      return `<polyline fill="none" stroke="${c}" stroke-width="1.8" points="${pts}"/>${dots}`;
+    }).join('');
+    return `<div class="b95chart"><svg viewBox="0 0 ${W} ${H}">${grid}${xLabels}${series}</svg><div class="b95lineleg"><span><i style="background:#78c33b;color:#78c33b"></i>Present</span><span><i style="background:#ffbf00;color:#ffbf00"></i>Absent</span><span><i style="background:#df3349;color:#df3349"></i>Late</span></div></div>`;
+  };
+
+  // Colorful 4-segment Real-time Status Donut
+  const statusDonut=()=>{
+    const segs=[{v:d.present||0,c:'#78c33b',l:'Present'},{v:d.absent||0,c:'#ffbf00',l:'Absent'},{v:d.late||0,c:'#df3349',l:'Late'},{v:d.leave||0,c:'#7042c2',l:'On Leave'}];
+    const sum=segs.reduce((a,s)=>a+s.v,0);
+    const vals=sum>0?segs.map(s=>s.v):[1,1,1,1];
+    const tot=vals.reduce((a,b)=>a+b,0);
+    const r=66,cx=87,cy=87,C=2*Math.PI*r;let off=0;
+    const arcs=segs.map((s,i)=>{
+      const len=(vals[i]/tot)*C;
+      const el=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${s.c}" stroke-width="24" stroke-dasharray="${len.toFixed(2)} ${(C-len).toFixed(2)}" stroke-dashoffset="${(-off).toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>`;
+      off+=len;return el;
+    }).join('');
+    const leg=segs.map(s=>`<span><i style="background:${s.c}"></i>${s.l}</span>`).join('');
+    return `<div class="b95status"><svg class="b95donut" viewBox="0 0 174 174">${arcs}</svg><div class="b95dleg">${leg}</div></div>`;
+  };
+
+  // Overtime Analysis chart with Hrs Y-axis + Thu..Wed X-axis
+  const otChart=()=>{
+    const W=260,H=195,pl=32,pr=10,pt=24,pb=26,cw=W-pl-pr,ch=H-pt-pb;
+    const ticks=[0,0.2,0.4,0.6,0.8,1];
+    const yPos=v=>pt+ch-v*ch;
+    const grid=ticks.map(v=>`<line x1="${pl}" y1="${yPos(v).toFixed(1)}" x2="${W-pr}" y2="${yPos(v).toFixed(1)}" stroke="#eef1f6" stroke-width="1"/><text x="${pl-6}" y="${(yPos(v)+3.5).toFixed(1)}" text-anchor="end" font-size="10.5" fill="#4b5563">${v}</text>`).join('');
+    const xLabels=days.map((r,i)=>{const x=pl+(i+0.5)*(cw/days.length);return `<text x="${x.toFixed(1)}" y="${H-6}" text-anchor="middle" font-size="10.5" fill="#4b5563">${r.wd}</text>`}).join('');
+    return `<div class="b95chart"><svg viewBox="0 0 ${W} ${H}"><text x="${pl-4}" y="13" font-size="10.5" fill="#4b5563">Hrs</text>${grid}${xLabels}</svg></div>`;
+  };
+
+  // Leave Overview purple circle chart
+  const leaveChart=()=>{
+    const lv=d.leave||0;
+    const lbl=lv>0?`${lv} Approved Leave${lv===1?'':'s'}`:'No Approved Leav...';
+    return `<div class="b95leave"><svg viewBox="0 0 240 205"><circle cx="112" cy="96" r="64" fill="#7042c2"/><polyline points="112,160 112,182 126,182" fill="none" stroke="#7042c2" stroke-width="1.4"/><text x="131" y="186" font-size="12" fill="#374151">${lbl}</text></svg></div>`;
+  };
+
+  const deptFilter=`<select aria-label="Department filter"><option>All Departments</option>${dept.map(r=>`<option>${esc(r.dept)}</option>`).join('')}</select>`;
+  const attPct=d.employees?Math.round((d.present||0)/d.employees*100):0;
+
+  return `<div class="b95dash"><div class="b95metrics">${cards.map(([n,v,bg,c,ico,note,a])=>`<button type="button" style="background:${bg};--icon-color:${c}" onclick="${a}"><span class="b95icon">${ico}</span><span>${n}</span><strong>${v||0}</strong><small>${note}</small></button>`).join('')}</div><div class="b95main">
+  ${tile('Attendance Overview '+rangeSel,attChart(),true)}
+  ${tile('HR Quick Access',`<div class="b95quick">${quick}</div>`,false,'',icoBolt)}
+  ${tile('Real-time Status',`${statusDonut()}<div class="b95hint"><span class="b95warn">!</span><span>${d.employees?`Attendance is ${attPct}% today.`:'Attention: Your organization has 0% attendance today.'}</span></div>`)}
+  ${tile('Department Attendance',dept.length?zdChart(dept.slice(0,8).map(r=>({l:r.dept,rate:r.rate})),[{k:'rate',c:'#78c33b'}],{max:100}):'')}
+  ${tile('Overtime Analysis',`<div class="b95filters">${deptFilter}${rangeSel}</div>${monthly.length?zdChart(monthly.slice(0,8).map(r=>({l:r.dept,ot:r.ot_h})),[{k:'ot',c:'#4b9cd1'}]):otChart()}`)}
+  ${tile('Attendance by Shift','')}
+  ${tile('Leave Overview',`<div class="b95filters">${rangeSel}</div>${leaveChart()}`)}
+  ${tile('Top Late Arrivals Today',(wd.late_today&&wd.late_today.length?wd.late_today.map(r=>`<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid #f0f2f5"><b>${esc(r.name)}</b><span class="mut">${r.late_min} min</span></div>`).join(''):`<div class="b95empty-box"><span class="b95check-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg></span><span>No late arrivals today!</span></div>`)+`<button type="button" class="b95link" onclick="go('Attendance')">View All Late Arrivals &rarr;</button>`,false,'b95list',`<span style="color:#a82c3a">${icoLateH}</span>`)}
+  ${tile('Real-Time Monitoring',latest.length?rtmHtml(latest):`<div class="b95empty-box"><span class="b95tray-ico"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 11h-4.2a3 3 0 0 1-5.6 0H5V5h14z"/></svg></span><span>No recent activity today.</span></div>`,false,'b95list',`<span style="color:#3d8c40">${icoSignal}</span>`)}
+  ${tile('HR Overview',`<div class="b95hr-top"><div class="b95exp-card"><div class="b95exp-title">Document Expiry (Today)</div><div class="b95exp-row">${icoDocWarn('#d9303e')}<strong>${expToday}</strong><button type="button" class="b95vdet" onclick="go('Contracts')">View Details</button></div></div><div class="b95exp-card"><div class="b95exp-title">Document Expiry (<b>This Week</b>)</div><div class="b95exp-row">${icoDocWarn('#d99020')}<strong>${expWeek}</strong><button type="button" class="b95vdet" onclick="go('Contracts')">View Details</button></div></div><div class="b95exp-card"><div class="b95exp-title">Document Expiry (<b>This Month</b>)</div><div class="b95exp-row">${icoDocWarn('#7b42bc')}<strong>${expMonth}</strong><button type="button" class="b95vdet" onclick="go('Contracts')">View Details</button></div></div></div><div class="b95hr-bot"><div class="b95sub-panel"><h3>Upcoming Birthdays</h3><button type="button" class="b95link" onclick="go('Employees')">View All Birthdays &rarr;</button></div><div class="b95sub-panel"><h3>AI Insights &amp; Recommendations</h3><div class="b95ai-box"><span class="b95ai-ico">&#10003;</span><div><b>&#9989; Normal Operations</b><p>No statistical anomalies detected today. Attendance and punctuality are within normal historical baselines.</p></div></div></div></div>`,true,'b95list')}
   </div></div>`
 }
 function bioDash(d,st,wd,rg,ids,X){X=X||{};if(document.documentElement.dataset.skin==='classic'&&!window.dashEdit)return bio95Dash(d,st,wd,X);
